@@ -1,26 +1,105 @@
 @import "tailwindcss";
 
+/* ---- Pathfinder "deep-space observation deck" design system ---- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-0: #06060f;
+  --bg-1: #0b0a1e;
+  --bg-2: #14112e;
+  --ink: #eef0ff;
+  --ink-dim: #a6a8c8;
+  --violet: #7c5cff;
+  --violet-deep: #5b3df0;
+  --cyan: #38e1ff;
+  --glass: rgba(22, 20, 44, 0.55);
+  --glass-brd: rgba(255, 255, 255, 0.10);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg-0);
+  --color-foreground: var(--ink);
+  --color-violet: var(--violet);
+  --color-cyan: var(--cyan);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-0);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  text-wrap: pretty;
+}
+
+/* Glass panel: frosted dark with hairline border + soft inner top highlight */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-brd);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 10px 40px -12px rgba(0, 0, 0, 0.7);
+}
+
+/* Full-bleed cinematic space backdrop: layered aurora radials + vignette */
+.space-bg {
+  background:
+    radial-gradient(120% 90% at 78% 8%, rgba(56, 225, 255, 0.16), transparent 55%),
+    radial-gradient(130% 100% at 18% 92%, rgba(124, 92, 255, 0.22), transparent 55%),
+    radial-gradient(90% 70% at 50% 40%, rgba(91, 61, 240, 0.12), transparent 60%),
+    linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
+}
+
+/* Fine starfield + grain overlay -- kills the "flat gradient" AI look */
+.starfield::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 70% 20%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 40% 70%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1px 1px at 85% 60%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 55% 85%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 10% 80%, rgba(255, 255, 255, 0.45), transparent);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+@keyframes ring-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes ring-spin-rev {
+  to { transform: rotate(-360deg); }
+}
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
+}
+
+.animate-rise { animation: rise-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-float { animation: float-soft 4s ease-in-out infinite; }
+.ring-spin { animation: ring-spin 14s linear infinite; }
+.ring-spin-rev { animation: ring-spin-rev 20s linear infinite; }
+.glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+
+/* Thin custom scrollbar for the chat overlay */
+.chat-scroll::-webkit-scrollbar { width: 6px; }
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: rgba(124, 92, 255, 0.4);
+  border-radius: 999px;
 }
