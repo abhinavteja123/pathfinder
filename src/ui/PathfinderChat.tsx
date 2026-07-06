@@ -202,7 +202,13 @@ export default function PathfinderChat({
       setPendingAnswer(value);
       setExplainerStep(0);
       const slide = explainerBatch[0];
-      avatarRef.current?.speak?.(slide.body, { gesture: slide.gesture, arm: slide.arm });
+      // Point toward the concept card, not whatever side the slide happened to
+      // author -- the card docks on the OPPOSITE side from the mascot, and that
+      // side is random per playthrough (`explainerOnLeft` below, keyed off the
+      // shuffled step index), so a fixed per-slide `arm` value can never
+      // reliably point at the card. Step 0 always docks the mascot left (even
+      // index), so the card is on the right.
+      avatarRef.current?.speak?.(slide.body, { gesture: slide.gesture, arm: 'right' });
       return;
     }
 
@@ -215,7 +221,10 @@ export default function PathfinderChat({
     if (nextStep < explainerBatch.length) {
       setExplainerStep(nextStep);
       const slide = explainerBatch[nextStep];
-      avatarRef.current?.speak?.(slide.body, { gesture: slide.gesture, arm: slide.arm });
+      // Same card-pointing logic as the first slide above: mascot docks left on
+      // even steps (card on the right, point right) and right on odd steps
+      // (card on the left, point left).
+      avatarRef.current?.speak?.(slide.body, { gesture: slide.gesture, arm: nextStep % 2 === 0 ? 'right' : 'left' });
       return;
     }
     setExplainerStep(null);

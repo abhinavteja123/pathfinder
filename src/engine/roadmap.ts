@@ -126,7 +126,12 @@ export function generateRoadmap(input: {
     title: s.name,
     description:
       s.year === year && goal
-        ? `You're here now — building toward ${goal}.`
+        // Base sentence always stays grammatically whole -- goal is raw
+        // free-text from an LLM node ("what game's got you hooked?" etc, not
+        // a real goal statement), so it can't be trusted as a sentence's
+        // object. Quoting it as an aside reads fine no matter how short or
+        // fragment-like the captured answer is.
+        ? `You're here now. ${s.base} (You said: "${goal}")`
         : s.year === year
           ? `You're here now. ${s.base}`
           : s.base,

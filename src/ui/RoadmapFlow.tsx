@@ -19,6 +19,7 @@ type ToggleSave = (itemId: string, nextStatus: RoadmapStatus) => void;
 interface CardData extends Record<string, unknown> {
   item: RoadmapItemRecord;
   onToggleSave?: ToggleSave;
+  current?: boolean;
 }
 
 const BADGE: Record<RoadmapCategory, string> = {
@@ -31,13 +32,19 @@ const BADGE: Record<RoadmapCategory, string> = {
 /** Single roadmap card. Interactive bits carry `nodrag`/`nopan` so clicks aren't
  * swallowed by React Flow's pan/drag handling. */
 function CardNode({ data }: NodeProps<Node<CardData>>) {
-  const { item, onToggleSave } = data;
+  const { item, onToggleSave, current } = data;
   const isMilestone = item.category === 'milestone';
   const saved = item.status === 'saved';
   return (
     <div
       className="glass w-52 rounded-2xl px-4 py-3 text-left"
-      style={isMilestone ? { borderColor: 'rgba(56,225,255,0.5)' } : undefined}
+      style={
+        current
+          ? { borderColor: 'rgba(56,225,255,0.95)', borderWidth: 2, boxShadow: '0 0 0 3px rgba(56,225,255,0.18)' }
+          : isMilestone
+            ? { borderColor: 'rgba(56,225,255,0.5)' }
+            : undefined
+      }
     >
       <Handle type="target" position={Position.Left} id="left" style={{ opacity: 0 }} />
       <Handle type="target" position={Position.Top} id="top" style={{ opacity: 0 }} />
@@ -109,7 +116,7 @@ export default function RoadmapFlow({ items, onToggleSave, compact = false }: Ro
         id: m.itemId,
         type: 'card',
         position: { x: i * 260, y: 0 },
-        data: { item: m, onToggleSave },
+        data: { item: m, onToggleSave, current: m.itemId === current?.itemId },
       });
     });
     opportunities.forEach((o, i) => {
@@ -145,9 +152,30 @@ export default function RoadmapFlow({ items, onToggleSave, compact = false }: Ro
           targetHandle: 'top',
           type: 'smoothstep',
           animated: true,
-          style: { stroke: 'rgba(124,92,255,0.45)' },
+          style: { stroke: 'rgba(139,110,255,0.85)', strokeWidth: 2 },
         });
       });
+    } else {
+      // No milestone in this items set (e.g. the split-panel "specialization
+      // roadmap" view, which only ever receives domain items) -- nothing for
+      // opportunities to branch off, so they rendered as disconnected floating
+      // cards. Chain them to each other in order instead, so this panel reads
+      // as a connected track too, same visual language as the milestone spine.
+      // strokeWidth/opacity matched to the spine's -- the original thin
+      // 1px/0.45-alpha line was nearly invisible against the dark background
+      // and read as still-disconnected even though the edge was there.
+      for (let i = 0; i < opportunities.length - 1; i++) {
+        edges.push({
+          id: `chain-${opportunities[i].itemId}`,
+          source: opportunities[i].itemId,
+          sourceHandle: 'right',
+          target: opportunities[i + 1].itemId,
+          targetHandle: 'left',
+          type: 'smoothstep',
+          animated: true,
+          style: { stroke: 'rgba(139,110,255,0.85)', strokeWidth: 2 },
+        });
+      }
     }
 
     return { nodes, edges };

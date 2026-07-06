@@ -244,7 +244,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
       updateRealtimeGesture: (gesture, side) => {
         setCurrentGesture(gesture);
         gestureTypeRef.current = gesture;
-        
+
         if (gesture === "wave") {
           setIsWaving(true);
           isWavingRef.current = true;
@@ -252,8 +252,15 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
           setIsWaving(false);
           isWavingRef.current = false;
         }
-        
+
         if (gesture) {
+          // `side` maps directly to screen left/right (rightArmGroup renders on
+          // screen-right, confirmed via direct capture) -- no character-facing
+          // mirror flip. An earlier attempt added one; reverted after live
+          // screenshots showed explainer gestures still pointing the wrong way.
+          // The real cause was the explainer's random left/right docking (see
+          // PathfinderChat.tsx `explainerOnLeft`), not this mapping -- fixed at
+          // the call site instead, computing the pointing side dynamically.
           activeArmRef.current = side || (gesture === "peace" ? "left" : "right");
         }
       },
@@ -713,11 +720,16 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
       
       // We divide each finger into two articulating segments:
       // 1. Metacarpal (base) segment: Capsule with top cap center at local (0,0,0)
-      const fingerBaseGeom = new THREE.CapsuleGeometry(0.065, 0.08, 4, 12);
+      // Thickened from 0.065 -- at the avatar's actual render size, 3 thin
+      // capsules splayed 0.08 apart read as disconnected slivers rather than
+      // a hand, especially from angles where the palm rotates away from
+      // camera (most gesture poses). Fatter + closer together (see position
+      // tightening below) fuses them into one legible hand mass instead.
+      const fingerBaseGeom = new THREE.CapsuleGeometry(0.085, 0.08, 4, 12);
       fingerBaseGeom.translate(0, -0.04, 0);
 
       // 2. Phalangeal (tip) segment: Slightly thinner capsule tapering nicely, top cap center at local (0,0,0)
-      const fingerTipGeom = new THREE.CapsuleGeometry(0.052, 0.08, 4, 12);
+      const fingerTipGeom = new THREE.CapsuleGeometry(0.07, 0.08, 4, 12);
       fingerTipGeom.translate(0, -0.04, 0);
 
       const palmGlowGeom = new THREE.SphereGeometry(0.05, 8, 8);
@@ -735,7 +747,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         // 2. Left finger/claw (Gold accent) - Pivoted directly at bottom of palm (-0.145)
         const fingerLeft = new THREE.Mesh(fingerBaseGeom, accentMaterial);
         fingerLeft.name = "fingerLeft";
-        fingerLeft.position.set(-0.08, -0.145, 0);
+        fingerLeft.position.set(-0.055, -0.145, 0);
         
         const fingerLeftTip = new THREE.Mesh(fingerTipGeom, accentMaterial);
         fingerLeftTip.name = "fingerLeftTip";
@@ -746,7 +758,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         // 3. Right finger/claw (Gold accent) - Pivoted directly at bottom of palm (-0.145)
         const fingerRight = new THREE.Mesh(fingerBaseGeom, accentMaterial);
         fingerRight.name = "fingerRight";
-        fingerRight.position.set(0.08, -0.145, 0);
+        fingerRight.position.set(0.055, -0.145, 0);
 
         const fingerRightTip = new THREE.Mesh(fingerTipGeom, accentMaterial);
         fingerRightTip.name = "fingerRightTip";
@@ -757,7 +769,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         // 4. Thumb claw (Gold accent) - Pivoted directly at bottom of palm (-0.145)
         const fingerThumb = new THREE.Mesh(fingerBaseGeom, accentMaterial);
         fingerThumb.name = "fingerThumb";
-        fingerThumb.position.set(0, -0.145, 0.08);
+        fingerThumb.position.set(0, -0.145, 0.06);
 
         const fingerThumbTip = new THREE.Mesh(fingerTipGeom, accentMaterial);
         fingerThumbTip.name = "fingerThumbTip";
@@ -804,6 +816,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
       const rightHand = createRobotHand();
       rightHand.position.set(0, -0.75, 0); // attached at end of cylinder arm segment
       rightArmGroup.add(rightHand);
+
 
       // --- Underglow / Hologram Base Ring ---
       const underglowRingGeom = new THREE.TorusGeometry(1.3, 0.03, 8, 64);
@@ -970,25 +983,32 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
           // Dual-jointed wrist drag: overlapping action creates highly realistic wave
           targetR_HandRot = { x: 0.1, y: -0.2, z: -0.8 - sweep * 1.5 }; 
         } else if (activeArm === "right" && activeGest === "thumbsup") {
-          // Thumbs up right arm: extended forward and slightly outward with stable shoulder anchor
+          // Thumbs up right arm: reuses wave's proven-visible raised-and-out angle
+          // (z:+1.75, not the old negative z) so the arm reads clearly beside the
+          // body instead of swinging INTO the torso. The old code (and the first
+          // attempted fix, which just made the same wrong-sign z bigger) both had
+          // z negative here, which is the occlusion direction, not the open one --
+          // confirmed by a live render capture showing the arm still hidden after
+          // that first attempt. Gesture identity now comes entirely from the hand/
+          // finger pose, not the arm angle.
           targetR_ArmPos = { x: 1.1, y: -0.40, z: 0.0 };
-          targetR_ArmRot = { x: -1.1, y: -0.3, z: -0.6 };
+          targetR_ArmRot = { x: -0.35, y: -0.3, z: 1.75 };
           targetR_HandRot = { x: 0.2, y: 1.1, z: -0.3 }; // thumb points up, palm faces side-front
           headGroup.position.y = 1.3 + Math.sin(time * 8.0) * 0.05; // Nod head
         } else if (activeArm === "right" && activeGest === "peace") {
-          // Peace sign right arm: raise up and point fingers forward with stable shoulder anchor
+          // Peace sign right arm: same wave-derived visible angle as thumbsup above.
           targetR_ArmPos = { x: 1.1, y: -0.40, z: 0.0 };
-          targetR_ArmRot = { x: -1.2, y: -0.3, z: -0.7 };
+          targetR_ArmRot = { x: -0.35, y: -0.3, z: 1.75 };
           targetR_HandRot = { x: 0.2, y: 0.8, z: -0.3 }; // V sign faces the camera
         } else if (activeArm === "right" && activeGest === "handshake") {
-          // Handshake right arm: extend forward with stable shoulder anchor
+          // Handshake right arm: same wave-derived visible angle as thumbsup above.
           targetR_ArmPos = { x: 1.1, y: -0.40, z: 0.0 };
-          targetR_ArmRot = { x: -1.1, y: -0.15, z: -0.15 }; // Adjusted to avoid chest clipping
+          targetR_ArmRot = { x: -0.35, y: -0.15, z: 1.6 };
           targetR_HandRot = { x: 0.0, y: 0.0, z: 0.0 }; // Clean vertical shake pose directly in front, no distortion
         } else if (activeGest === "stop") {
-          // Stop sign: raised outward and forward with stable shoulder anchor
+          // Stop sign: same wave-derived visible angle as thumbsup above.
           targetR_ArmPos = { x: 1.1, y: -0.40, z: 0.0 };
-          targetR_ArmRot = { x: -1.1, y: -0.3, z: -0.5 };
+          targetR_ArmRot = { x: -0.35, y: -0.3, z: 1.7 };
           targetR_HandRot = { x: -0.8, y: -0.1, z: -0.2 }; // palm flat facing user directly
         } else {
           // Normal floating idle right arm (stable shoulder socket, beautiful dynamic wrist breathing)
@@ -1016,25 +1036,26 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
           // Dual-jointed wrist drag: overlapping action creates highly realistic wave
           targetL_HandRot = { x: 0.1, y: 0.2, z: 0.8 + sweep * 1.5 };
         } else if (activeArm === "left" && activeGest === "thumbsup") {
-          // Thumbs up left arm with stable shoulder anchor
+          // True mirror of the right-arm wave-derived angle above (left wave uses
+          // negative z where right wave uses positive z -- same sign flip here).
           targetL_ArmPos = { x: -1.1, y: -0.40, z: 0.0 };
-          targetL_ArmRot = { x: -1.1, y: 0.3, z: 0.6 };
+          targetL_ArmRot = { x: -0.35, y: 0.3, z: -1.75 };
           targetL_HandRot = { x: 0.2, y: -1.1, z: 0.3 };
           headGroup.position.y = 1.3 + Math.sin(time * 8.0) * 0.05; // Nod head
         } else if (activeArm === "left" && activeGest === "peace") {
-          // Peace sign left arm with stable shoulder anchor
+          // True mirror of the right-arm wave-derived angle above.
           targetL_ArmPos = { x: -1.1, y: -0.40, z: 0.0 };
-          targetL_ArmRot = { x: -1.2, y: 0.3, z: 0.7 };
+          targetL_ArmRot = { x: -0.35, y: 0.3, z: -1.75 };
           targetL_HandRot = { x: 0.2, y: -0.8, z: 0.3 };
         } else if (activeArm === "left" && activeGest === "handshake") {
-          // Handshake left arm with stable shoulder anchor
+          // True mirror of the right-arm wave-derived angle above.
           targetL_ArmPos = { x: -1.1, y: -0.40, z: 0.0 };
-          targetL_ArmRot = { x: -1.1, y: 0.15, z: 0.15 }; // Adjusted to avoid chest clipping
+          targetL_ArmRot = { x: -0.35, y: 0.15, z: -1.6 };
           targetL_HandRot = { x: 0.0, y: 0.0, z: 0.0 }; // Clean vertical shake pose directly in front, no distortion
         } else if (activeGest === "stop") {
-          // Stop sign left arm with stable shoulder anchor
+          // True mirror of the right-arm wave-derived angle above.
           targetL_ArmPos = { x: -1.1, y: -0.40, z: 0.0 };
-          targetL_ArmRot = { x: -1.1, y: 0.3, z: 0.5 };
+          targetL_ArmRot = { x: -0.35, y: 0.3, z: -1.7 };
           targetL_HandRot = { x: -0.8, y: 0.1, z: 0.2 };
         } else {
           // Normal floating idle left arm (stable shoulder socket, beautiful dynamic wrist breathing)
@@ -1170,44 +1191,40 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
               rFingerRightTip.rotation.z = THREE.MathUtils.lerp(rFingerRightTip.rotation.z, -0.25 - graspPulse * 0.8, 0.28);
             }
           } else if (isRightActive && isWavingRef.current) {
-            // Highly realistic finger waving motion using physics-accurate parallel sway & whiplash delay
-            // Fingers stay naturally relaxed and extended, swaying sideways together in parallel with cascading phase lag
-            const sweepPhase = time * 11.0;
-            const sway = Math.sin(sweepPhase - 0.6) * 0.15;
-            const swayTip = Math.sin(sweepPhase - 1.2) * 0.12;
+            // Fingers swing IN PHASE with the arm's own side-to-side sweep (same
+            // Math.sin(time*11.0) term the arm uses, no independent lag/offset) so
+            // the open hand reads as one coordinated wave instead of the arm and
+            // fingers looking like they're moving on their own separate beats.
+            const armSweep = Math.sin(time * 11.0) * 0.22;
+            const handSway = armSweep * 1.6; // fingers lead a bit wider than the arm, like a real open-palm wave
+            const curlBase = 0.05; // relaxed, mostly-open hand -- not curled/clawed
+            const curlTip = 0.03;
 
-            // Subtle, gentle, natural breathing curl (X axis) rather than aggressive clawing
-            const curlBase = 0.15 + Math.cos(sweepPhase - 0.4) * 0.08;
-            const curlTip = 0.10 + Math.cos(sweepPhase - 1.0) * 0.06;
-
-            // 1. Left finger: base sways parallel, tip trails behind
-            rFingerLeft.rotation.x = THREE.MathUtils.lerp(rFingerLeft.rotation.x, curlBase, 0.24);
-            rFingerLeft.rotation.y = THREE.MathUtils.lerp(rFingerLeft.rotation.y, 0, 0.24);
-            rFingerLeft.rotation.z = THREE.MathUtils.lerp(rFingerLeft.rotation.z, 0.25 + sway, 0.24);
+            rFingerLeft.rotation.x = THREE.MathUtils.lerp(rFingerLeft.rotation.x, curlBase, 0.3);
+            rFingerLeft.rotation.y = THREE.MathUtils.lerp(rFingerLeft.rotation.y, 0, 0.3);
+            rFingerLeft.rotation.z = THREE.MathUtils.lerp(rFingerLeft.rotation.z, 0.3 + handSway, 0.3);
             if (rFingerLeftTip) {
-              rFingerLeftTip.rotation.x = THREE.MathUtils.lerp(rFingerLeftTip.rotation.x, curlTip, 0.24);
-              rFingerLeftTip.rotation.y = THREE.MathUtils.lerp(rFingerLeftTip.rotation.y, 0, 0.24);
-              rFingerLeftTip.rotation.z = THREE.MathUtils.lerp(rFingerLeftTip.rotation.z, 0.15 + swayTip, 0.24);
+              rFingerLeftTip.rotation.x = THREE.MathUtils.lerp(rFingerLeftTip.rotation.x, curlTip, 0.3);
+              rFingerLeftTip.rotation.y = THREE.MathUtils.lerp(rFingerLeftTip.rotation.y, 0, 0.3);
+              rFingerLeftTip.rotation.z = THREE.MathUtils.lerp(rFingerLeftTip.rotation.z, 0.15 + handSway * 0.8, 0.3);
             }
 
-            // 2. Right finger: base sways parallel, tip trails behind
-            rFingerRight.rotation.x = THREE.MathUtils.lerp(rFingerRight.rotation.x, curlBase, 0.24);
-            rFingerRight.rotation.y = THREE.MathUtils.lerp(rFingerRight.rotation.y, 0, 0.24);
-            rFingerRight.rotation.z = THREE.MathUtils.lerp(rFingerRight.rotation.z, -0.25 + sway, 0.24);
+            rFingerRight.rotation.x = THREE.MathUtils.lerp(rFingerRight.rotation.x, curlBase, 0.3);
+            rFingerRight.rotation.y = THREE.MathUtils.lerp(rFingerRight.rotation.y, 0, 0.3);
+            rFingerRight.rotation.z = THREE.MathUtils.lerp(rFingerRight.rotation.z, -0.3 + handSway, 0.3);
             if (rFingerRightTip) {
-              rFingerRightTip.rotation.x = THREE.MathUtils.lerp(rFingerRightTip.rotation.x, curlTip, 0.24);
-              rFingerRightTip.rotation.y = THREE.MathUtils.lerp(rFingerRightTip.rotation.y, 0, 0.24);
-              rFingerRightTip.rotation.z = THREE.MathUtils.lerp(rFingerRightTip.rotation.z, -0.15 + swayTip, 0.24);
+              rFingerRightTip.rotation.x = THREE.MathUtils.lerp(rFingerRightTip.rotation.x, curlTip, 0.3);
+              rFingerRightTip.rotation.y = THREE.MathUtils.lerp(rFingerRightTip.rotation.y, 0, 0.3);
+              rFingerRightTip.rotation.z = THREE.MathUtils.lerp(rFingerRightTip.rotation.z, -0.15 + handSway * 0.8, 0.3);
             }
 
-            // 3. Thumb: sways parallel, tip trails behind
-            rFingerThumb.rotation.x = THREE.MathUtils.lerp(rFingerThumb.rotation.x, -0.1 + Math.cos(sweepPhase - 0.4) * 0.08, 0.24);
-            rFingerThumb.rotation.y = THREE.MathUtils.lerp(rFingerThumb.rotation.y, 0, 0.24);
-            rFingerThumb.rotation.z = THREE.MathUtils.lerp(rFingerThumb.rotation.z, sway * 0.8, 0.24);
+            rFingerThumb.rotation.x = THREE.MathUtils.lerp(rFingerThumb.rotation.x, -0.1, 0.3);
+            rFingerThumb.rotation.y = THREE.MathUtils.lerp(rFingerThumb.rotation.y, 0, 0.3);
+            rFingerThumb.rotation.z = THREE.MathUtils.lerp(rFingerThumb.rotation.z, handSway * 0.6, 0.3);
             if (rFingerThumbTip) {
-              rFingerThumbTip.rotation.x = THREE.MathUtils.lerp(rFingerThumbTip.rotation.x, -0.1 + Math.cos(sweepPhase - 1.0) * 0.06, 0.24);
-              rFingerThumbTip.rotation.y = THREE.MathUtils.lerp(rFingerThumbTip.rotation.y, 0, 0.24);
-              rFingerThumbTip.rotation.z = THREE.MathUtils.lerp(rFingerThumbTip.rotation.z, swayTip * 0.8, 0.24);
+              rFingerThumbTip.rotation.x = THREE.MathUtils.lerp(rFingerThumbTip.rotation.x, -0.1, 0.3);
+              rFingerThumbTip.rotation.y = THREE.MathUtils.lerp(rFingerThumbTip.rotation.y, 0, 0.3);
+              rFingerThumbTip.rotation.z = THREE.MathUtils.lerp(rFingerThumbTip.rotation.z, handSway * 0.5, 0.3);
             }
           } else if (isRightActive && activeGest === "stop") {
             // Flat, statically spread stop hand
@@ -1351,44 +1368,40 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
               lFingerRightTip.rotation.z = THREE.MathUtils.lerp(lFingerRightTip.rotation.z, -0.25 - graspPulse * 0.8, 0.28);
             }
           } else if (isLeftActive && isWavingRef.current) {
-            // Highly realistic finger waving motion using physics-accurate parallel sway & whiplash delay
-            // Fingers stay naturally relaxed and extended, swaying sideways together in parallel with cascading phase lag
-            const sweepPhase = time * 11.0;
-            const sway = Math.sin(sweepPhase - 0.6) * 0.15;
-            const swayTip = Math.sin(sweepPhase - 1.2) * 0.12;
+            // Mirror of the right-hand in-phase wave sway above. Same phase as
+            // the left arm's own `sweep` term (no offset) -- the left arm's
+            // rotation target doesn't phase-shift `time` either, so this has to
+            // match exactly or the hand and fingers drift out of sync again.
+            const armSweep = Math.sin(time * 11.0) * 0.22;
+            const handSway = armSweep * 1.6;
+            const curlBase = 0.05;
+            const curlTip = 0.03;
 
-            // Subtle, gentle, natural breathing curl (X axis) rather than aggressive clawing
-            const curlBase = 0.15 + Math.cos(sweepPhase - 0.4) * 0.08;
-            const curlTip = 0.10 + Math.cos(sweepPhase - 1.0) * 0.06;
-
-            // 1. Left finger: base sways parallel, tip trails behind
-            lFingerLeft.rotation.x = THREE.MathUtils.lerp(lFingerLeft.rotation.x, curlBase, 0.24);
-            lFingerLeft.rotation.y = THREE.MathUtils.lerp(lFingerLeft.rotation.y, 0, 0.24);
-            lFingerLeft.rotation.z = THREE.MathUtils.lerp(lFingerLeft.rotation.z, 0.25 + sway, 0.24);
+            lFingerLeft.rotation.x = THREE.MathUtils.lerp(lFingerLeft.rotation.x, curlBase, 0.3);
+            lFingerLeft.rotation.y = THREE.MathUtils.lerp(lFingerLeft.rotation.y, 0, 0.3);
+            lFingerLeft.rotation.z = THREE.MathUtils.lerp(lFingerLeft.rotation.z, 0.3 + handSway, 0.3);
             if (lFingerLeftTip) {
-              lFingerLeftTip.rotation.x = THREE.MathUtils.lerp(lFingerLeftTip.rotation.x, curlTip, 0.24);
-              lFingerLeftTip.rotation.y = THREE.MathUtils.lerp(lFingerLeftTip.rotation.y, 0, 0.24);
-              lFingerLeftTip.rotation.z = THREE.MathUtils.lerp(lFingerLeftTip.rotation.z, 0.15 + swayTip, 0.24);
+              lFingerLeftTip.rotation.x = THREE.MathUtils.lerp(lFingerLeftTip.rotation.x, curlTip, 0.3);
+              lFingerLeftTip.rotation.y = THREE.MathUtils.lerp(lFingerLeftTip.rotation.y, 0, 0.3);
+              lFingerLeftTip.rotation.z = THREE.MathUtils.lerp(lFingerLeftTip.rotation.z, 0.15 + handSway * 0.8, 0.3);
             }
 
-            // 2. Right finger: base sways parallel, tip trails behind
-            lFingerRight.rotation.x = THREE.MathUtils.lerp(lFingerRight.rotation.x, curlBase, 0.24);
-            lFingerRight.rotation.y = THREE.MathUtils.lerp(lFingerRight.rotation.y, 0, 0.24);
-            lFingerRight.rotation.z = THREE.MathUtils.lerp(lFingerRight.rotation.z, -0.25 + sway, 0.24);
+            lFingerRight.rotation.x = THREE.MathUtils.lerp(lFingerRight.rotation.x, curlBase, 0.3);
+            lFingerRight.rotation.y = THREE.MathUtils.lerp(lFingerRight.rotation.y, 0, 0.3);
+            lFingerRight.rotation.z = THREE.MathUtils.lerp(lFingerRight.rotation.z, -0.3 + handSway, 0.3);
             if (lFingerRightTip) {
-              lFingerRightTip.rotation.x = THREE.MathUtils.lerp(lFingerRightTip.rotation.x, curlTip, 0.24);
-              lFingerRightTip.rotation.y = THREE.MathUtils.lerp(lFingerRightTip.rotation.y, 0, 0.24);
-              lFingerRightTip.rotation.z = THREE.MathUtils.lerp(lFingerRightTip.rotation.z, -0.15 + swayTip, 0.24);
+              lFingerRightTip.rotation.x = THREE.MathUtils.lerp(lFingerRightTip.rotation.x, curlTip, 0.3);
+              lFingerRightTip.rotation.y = THREE.MathUtils.lerp(lFingerRightTip.rotation.y, 0, 0.3);
+              lFingerRightTip.rotation.z = THREE.MathUtils.lerp(lFingerRightTip.rotation.z, -0.15 + handSway * 0.8, 0.3);
             }
 
-            // 3. Thumb: sways parallel, tip trails behind
-            lFingerThumb.rotation.x = THREE.MathUtils.lerp(lFingerThumb.rotation.x, -0.1 + Math.cos(sweepPhase - 0.4) * 0.08, 0.24);
-            lFingerThumb.rotation.y = THREE.MathUtils.lerp(lFingerThumb.rotation.y, 0, 0.24);
-            lFingerThumb.rotation.z = THREE.MathUtils.lerp(lFingerThumb.rotation.z, sway * 0.8, 0.24);
+            lFingerThumb.rotation.x = THREE.MathUtils.lerp(lFingerThumb.rotation.x, -0.1, 0.3);
+            lFingerThumb.rotation.y = THREE.MathUtils.lerp(lFingerThumb.rotation.y, 0, 0.3);
+            lFingerThumb.rotation.z = THREE.MathUtils.lerp(lFingerThumb.rotation.z, handSway * 0.6, 0.3);
             if (lFingerThumbTip) {
-              lFingerThumbTip.rotation.x = THREE.MathUtils.lerp(lFingerThumbTip.rotation.x, -0.1 + Math.cos(sweepPhase - 1.0) * 0.06, 0.24);
-              lFingerThumbTip.rotation.y = THREE.MathUtils.lerp(lFingerThumbTip.rotation.y, 0, 0.24);
-              lFingerThumbTip.rotation.z = THREE.MathUtils.lerp(lFingerThumbTip.rotation.z, swayTip * 0.8, 0.24);
+              lFingerThumbTip.rotation.x = THREE.MathUtils.lerp(lFingerThumbTip.rotation.x, -0.1, 0.3);
+              lFingerThumbTip.rotation.y = THREE.MathUtils.lerp(lFingerThumbTip.rotation.y, 0, 0.3);
+              lFingerThumbTip.rotation.z = THREE.MathUtils.lerp(lFingerThumbTip.rotation.z, handSway * 0.5, 0.3);
             }
           } else if (isLeftActive && activeGest === "stop") {
             // Flat, statically spread stop hand

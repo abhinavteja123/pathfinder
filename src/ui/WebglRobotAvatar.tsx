@@ -90,13 +90,25 @@ const WebglRobotAvatar = forwardRef<CharacterController>(function WebglRobotAvat
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.02;
         utterance.pitch = mood === 'angry' ? 0.85 : mood === 'laughing' ? 1.15 : 1.0;
-        const finish = () => {
+        // Some environments (no audio device, certain browsers/voices) fire
+        // onend near-instantly instead of after real speech duration. Verified
+        // live: the gesture ref/pose/color logic all fire and render correctly
+        // given time to lerp into place (~0.5-0.7s to visually converge), so
+        // the floor here just has to outlast that convergence window with
+        // margin -- 2500ms costs nothing (utterances this long normally take
+        // several seconds to actually speak) but reliably survives an
+        // instant-onend environment instead of releasing mid-lerp.
+        const MIN_GESTURE_HOLD_MS = 2500;
+        const speakStartedAt = Date.now();
+        const release = () => {
           setIsSpeaking(false);
           setExpression('idle');
-          // Release the gesture exactly when speech actually ends, so a long
-          // line's gesture holds the whole time instead of a fixed 2-2.5s
-          // timer relaxing back to idle mid-sentence.
           viewerRef.current?.stopGesture();
+        };
+        const finish = () => {
+          const elapsed = Date.now() - speakStartedAt;
+          if (elapsed >= MIN_GESTURE_HOLD_MS) release();
+          else setTimeout(release, MIN_GESTURE_HOLD_MS - elapsed);
         };
         utterance.onend = finish;
         utterance.onerror = finish;

@@ -118,7 +118,7 @@ async function testFullDiscoverConversation() {
   );
 }
 
-async function testHybridSlotCapture() {
+async function testScriptedSlotCapture() {
   const router = new LlmRouter({ scriptedFallback: () => 'What track are you focusing on?' });
 
   const ctx: EngineContext = {
@@ -148,7 +148,7 @@ async function testHybridSlotCapture() {
     { studentId: 's2', nodeId: 'convert_track', input: 'backend engineering' },
     router
   );
-  check('hybrid node captures reply into ctx.answers.specialization', ctx.answers.specialization === 'backend engineering');
+  check('scripted node captures reply into ctx.answers.specialization', ctx.answers.specialization === 'backend engineering');
   check(
     'convert_wrapup interpolation has no blank hole for {answers.specialization}',
     t4.say.includes('backend engineering') && !t4.say.includes('{answers.')
@@ -160,7 +160,7 @@ async function main() {
   await testEntryStateBranching();
   await testRouterFallback();
   await testFullDiscoverConversation();
-  await testHybridSlotCapture();
+  await testScriptedSlotCapture();
 
   if (failures > 0) {
     console.error(`\n${failures} check(s) failed.`);

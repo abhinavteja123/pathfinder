@@ -28,7 +28,7 @@ export default function DemoPage() {
     const params = new URLSearchParams(window.location.search);
     const y = (Number(params.get('year')) || 1) as Year;
     const p = (params.get('program') as Program) || 'BTech';
-    const id = params.get('studentId') || `demo-y${y}-${p}`;
+    const id = params.get('studentId') || `demo-y${y}-${p}-${Date.now()}`;
     setStudentId(id);
     setYear(y);
     setProgram(p);

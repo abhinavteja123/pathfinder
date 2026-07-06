@@ -64,15 +64,15 @@ export const NODES: Record<string, EngineNode> = {
       key: 'domain',
       fallback: 'What draws you to that field the most?',
       map: {
-        'AI/ML': 'Have you tried training any models yourself, or mostly reading about it so far?',
-        Cybersecurity: 'Have you tried any CTFs or bug-bounty stuff yet, or is this still new territory?',
-        IoT: 'Have you wired up any sensors or boards yourself, like Arduino or Raspberry Pi?',
+        'AI/ML': 'Are you more curious about how AI models actually learn, or more into the cool stuff you can build with them?',
+        Cybersecurity: 'Is it the hacker/puzzle-solving side that pulls you in, or more the idea of protecting systems and data?',
+        IoT: 'Are you more into the physical gadgets and sensors side, or the idea of connecting everyday things to the internet?',
         ECE: 'Are you more into the hardware/circuits side, or the signal-processing/software side?',
         EEE: 'Are you leaning more toward power systems, or control systems and automation?',
         'Web Dev': 'Frontend, backend, or do you like doing both end to end?',
-        'Cloud/DevOps': 'Have you played with AWS, Docker, or Kubernetes yet, even a little?',
+        'Cloud/DevOps': 'Is it the idea of running apps at massive scale that excites you, or more the automation/DevOps side of things?',
         'Mobile Dev': 'iOS, Android, or cross-platform stuff like Flutter or React Native?',
-        Blockchain: 'Have you written any smart contracts yet, or is this still conceptual for you?',
+        Blockchain: 'Is it the decentralization idea that hooks you, or more the tech behind smart contracts and crypto?',
         'Data Science': 'Do you enjoy the analysis and stats side more, or the visualization and storytelling side?',
       },
     },
@@ -114,9 +114,8 @@ export const NODES: Record<string, EngineNode> = {
   },
   build_activity_check: {
     id: 'build_activity_check',
-    kind: 'llm',
-    systemPrompt:
-      'You are Pathfinder talking to a 2nd-year student. Ask a warm, specific follow-up about what skills they have built or which applications/hackathons they have tried so far.',
+    kind: 'fixed',
+    say: 'What have you been building or trying lately -- any hackathons or side projects worth bragging about?',
     captureAs: 'activity_note',
     next: 'build_wrapup',
   },
@@ -146,10 +145,9 @@ export const NODES: Record<string, EngineNode> = {
   },
   build_catchup_activity: {
     id: 'build_catchup_activity',
-    kind: 'hybrid',
-    slots: ['interests'],
-    phrasingPrompt:
-      'You are Pathfinder. Ask what the student has been building or exploring so far this year -- keep it natural.',
+    kind: 'fixed',
+    say: 'So what have you actually gotten your hands on so far this year -- any projects, clubs, hackathons?',
+    captureAs: 'interests',
     next: 'build_wrapup',
   },
 
@@ -164,18 +162,16 @@ export const NODES: Record<string, EngineNode> = {
   },
   convert_ppo_check: {
     id: 'convert_ppo_check',
-    kind: 'llm',
-    systemPrompt:
-      'You are Pathfinder talking to a 3rd-year student. Ask specifically and supportively about their internship-to-PPO conversion plans or targeted hackathons/case comps.',
+    kind: 'fixed',
+    say: "Give me specifics -- any offer talks in progress, or hackathons/case comps you're using to strengthen your case?",
     captureAs: 'conversion_plan',
     next: 'convert_track',
   },
   convert_track: {
     id: 'convert_track',
-    kind: 'hybrid',
-    slots: ['specialization'],
-    phrasingPrompt:
-      'You are Pathfinder. Ask which specialization or track the student wants to double down on this year -- phrase it naturally.',
+    kind: 'fixed',
+    say: 'Time to get specific -- which track or specialization are you doubling down on to make yourself hire-ready this year?',
+    captureAs: 'specialization',
     next: 'convert_wrapup',
   },
   convert_wrapup: {
@@ -214,18 +210,16 @@ export const NODES: Record<string, EngineNode> = {
   },
   launch_offer_check: {
     id: 'launch_offer_check',
-    kind: 'llm',
-    systemPrompt:
-      'You are Pathfinder talking to a final-year student under time pressure. Ask supportively about offers in hand, interview prep needs, or evaluation/negotiation questions. Keep it brief and urgent-but-kind.',
+    kind: 'fixed',
+    say: 'Placement crunch time -- where do you stand on offers, or what interview prep do you need most right now?',
     captureAs: 'offer_status',
     next: 'launch_higher_studies',
   },
   launch_higher_studies: {
     id: 'launch_higher_studies',
-    kind: 'hybrid',
-    slots: ['higher_studies_interest'],
-    phrasingPrompt:
-      'You are Pathfinder. Ask briefly whether the student is also considering higher studies as a parallel path, alongside placements.',
+    kind: 'fixed',
+    say: "Quick one, since time's tight -- placements only, or are you weighing higher studies too?",
+    captureAs: 'higher_studies_interest',
     next: 'launch_wrapup',
   },
   launch_wrapup: {
