@@ -8,7 +8,7 @@ import type { Program, Year } from '@/engine/types';
 const SHOWCASE: { category: RoadmapCategory; label: string }[] = [
   { category: 'hackathon', label: 'Hackathons' },
   { category: 'internship', label: 'Internships' },
-  { category: 'oss', label: 'Open Source' },
+  { category: 'oss', label: 'Open Source / Specialization' },
 ];
 
 /**
@@ -67,6 +67,15 @@ export default function RoadmapPage() {
     return map;
   }, [items]);
 
+  // Split into the universal milestone spine and the domain-specific catalog
+  // (see engine/roadmap.ts's DOMAIN_CATALOG, itemId prefixed `domain-`) so
+  // this page shows the same "2 roadmaps" the chat's stage-complete view
+  // does, instead of one merged graph -- was only applied to the chat view
+  // before, this page still showed a single combined RoadmapFlow.
+  const milestoneItems = useMemo(() => items.filter((i) => i.category === 'milestone'), [items]);
+  const domainItems = useMemo(() => items.filter((i) => i.itemId.startsWith('domain-')), [items]);
+  const hasDomainSplit = domainItems.length > 0;
+
   return (
     <main className="space-bg starfield relative flex min-h-[100dvh] flex-col overflow-hidden">
       <header className="relative z-20 flex items-center justify-between px-6 py-5 sm:px-10">
@@ -90,15 +99,30 @@ export default function RoadmapPage() {
       </header>
 
       <section className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 pb-6 sm:px-8">
-        <div className="glass animate-rise h-[60vh] min-h-[380px] overflow-hidden rounded-3xl">
-          {loading ? (
-            <div className="grid h-full place-items-center">
-              <p className="text-sm text-[var(--ink-dim)]">Charting your path…</p>
+        {loading ? (
+          <div className="glass animate-rise grid h-[60vh] min-h-[380px] place-items-center overflow-hidden rounded-3xl">
+            <p className="text-sm text-[var(--ink-dim)]">Charting your path…</p>
+          </div>
+        ) : hasDomainSplit ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <p className="mb-2 font-display text-sm font-semibold text-[var(--ink)]">Your journey</p>
+              <div className="glass animate-rise h-[52vh] min-h-[340px] overflow-hidden rounded-3xl">
+                <RoadmapFlow items={milestoneItems} onToggleSave={toggleSave} />
+              </div>
             </div>
-          ) : (
+            <div>
+              <p className="mb-2 font-display text-sm font-semibold text-[var(--ink)]">Your specialization roadmap</p>
+              <div className="glass animate-rise h-[52vh] min-h-[340px] overflow-hidden rounded-3xl">
+                <RoadmapFlow items={domainItems} onToggleSave={toggleSave} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="glass animate-rise h-[60vh] min-h-[380px] overflow-hidden rounded-3xl">
             <RoadmapFlow items={items} onToggleSave={toggleSave} />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Explore showcase -- the "other modules" the bot points at */}
         <div className="mt-6 grid gap-4 sm:grid-cols-3">

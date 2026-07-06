@@ -2,6 +2,9 @@ export type Year = 1 | 2 | 3 | 4;
 export type Program = 'BTech' | 'BBA';
 export type AnimationState = 'idle' | 'listening' | 'thinking' | 'talking' | 'celebrating';
 export type NodeKind = 'fixed' | 'llm' | 'hybrid';
+/** Matches RobotViewerRef.triggerGestureAnimation's gesture union exactly. */
+export type Gesture = 'wave' | 'thumbsup' | 'peace' | 'stop' | 'handshake';
+export type Arm = 'left' | 'right';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -21,8 +24,18 @@ export interface FixedNode {
   options?: MenuOption[];
   next?: string;
   captureAs?: string;
+  /** Optional: pick `say` from a scripted lookup keyed by a captured answer
+   * (e.g. the domain menu choice) instead of one static string -- lets a
+   * single node give a different canned line per answer with ZERO LLM calls.
+   * Falls back to `fallback`, or to `say` itself if no fallback given. */
+  sayByAnswer?: { key: string; map: Record<string, string>; fallback?: string };
   /** Marks the stage (Discover/Build/Convert/Launch) as complete when reached */
   terminal?: boolean;
+  /** Authored (not LLM-picked) gesture for this exact moment -- deterministic,
+   * same node always plays the same gesture. Free-text llm/hybrid nodes have
+   * no such field; those fall back to client-side keyword mood-detection. */
+  gesture?: Gesture;
+  arm?: Arm;
 }
 
 export interface LlmNode {
@@ -53,6 +66,12 @@ export interface EngineContext {
   hasHistory: boolean;
   answers: Record<string, string>;
   history: ChatMessage[];
+  /** Short authored phrase referencing saved/started/done roadmap items, e.g.
+   * "You've got 2 saved on your roadmap. " -- empty string if nothing to report.
+   * Computed server-side (turn/route.ts) before processTurn; interpolated via
+   * {roadmapProgress} in *_continue nodes so returning students get a real
+   * progress-aware opener instead of a generic "welcome back". */
+  roadmapProgress?: string;
 }
 
 export interface TurnRequest {
@@ -68,10 +87,15 @@ export interface TurnResponse {
   options?: MenuOption[];
   animationState: AnimationState;
   stageComplete: boolean;
+  gesture?: Gesture;
+  arm?: Arm;
 }
 
 export interface StatusResponse {
   onboardingComplete: boolean;
   reengagementDue: boolean;
   year: Year;
+  /** Does this student have any prior conversation turns at all? Lets the
+   * client decide whether to show the first-time guided tour before the chat. */
+  hasHistory: boolean;
 }

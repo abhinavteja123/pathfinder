@@ -31,6 +31,8 @@ export function buildProfileLine(ctx: EngineContext): string {
   const pack = CONTENT_PACKS[ctx.program];
   const bits: string[] = [`Year ${ctx.year} ${ctx.program} student`];
   if (ctx.answers.goal) bits.push(`their goal: ${ctx.answers.goal}`);
+  if (ctx.answers.hobbies) bits.push(`hobbies: ${ctx.answers.hobbies}`);
+  if (ctx.answers.domain) bits.push(`chosen field: ${ctx.answers.domain}`);
   if (ctx.answers.interests) bits.push(`into: ${ctx.answers.interests}`);
   if (ctx.answers.specialization) bits.push(`track: ${ctx.answers.specialization}`);
   if (ctx.answers.conversion_plan) bits.push(`conversion plan: ${ctx.answers.conversion_plan}`);

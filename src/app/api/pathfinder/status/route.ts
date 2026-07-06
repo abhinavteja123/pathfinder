@@ -15,9 +15,15 @@ export async function GET(request: NextRequest) {
 
   const onboarding = await repo.getOnboardingState(studentId);
   const checkin = await repo.getCheckin(studentId);
+  const conversationLog = await repo.getConversationLog(studentId, 1);
   const onboardingComplete = onboarding?.stage === 'complete';
   const reengagementDue =
     onboardingComplete && !!checkin?.nextDueAt && new Date(checkin.nextDueAt) <= new Date();
 
-  return NextResponse.json({ onboardingComplete, reengagementDue, year: student.year });
+  return NextResponse.json({
+    onboardingComplete,
+    reengagementDue,
+    year: student.year,
+    hasHistory: conversationLog.length > 0,
+  });
 }

@@ -8,11 +8,24 @@ import type { EngineNode } from './types';
  */
 export const NODES: Record<string, EngineNode> = {
   // ---- Y1: Discover ----
+  // Flow: greet -> hobbies -> goal -> domain (menu, scripted -- not LLM-guessed)
+  // -> 2 domain-aware follow-ups -> transition (client interleaves explainer
+  // slides here, see PathfinderChat) -> wrapup (both roadmaps generated).
   discover_intro: {
     id: 'discover_intro',
     kind: 'fixed',
-    say: "Hey! I'm Pathfinder. Before you dive into the portal, let's talk for a minute -- what's actually exciting you right now?",
-    options: [{ label: "Let's go", next: 'discover_goal' }],
+    say: "Hi! I'm Pathfinder -- your companion here. Good to meet you!",
+    options: [{ label: "Let's go", next: 'discover_hobbies' }],
+    gesture: 'wave',
+    arm: 'right',
+  },
+  discover_hobbies: {
+    id: 'discover_hobbies',
+    kind: 'llm',
+    systemPrompt:
+      'You are Pathfinder, a warm, curious campus companion bot talking to a 1st-year student. Ask casually what they like doing for fun outside of academics -- hobbies, interests -- not a form question. Keep it to 1-2 sentences.',
+    captureAs: 'hobbies',
+    next: 'discover_goal',
   },
   discover_goal: {
     id: 'discover_goal',
@@ -20,29 +33,84 @@ export const NODES: Record<string, EngineNode> = {
     systemPrompt:
       "You are Pathfinder, a warm, curious campus companion bot talking to a 1st-year student. Ask an open, creative question about what their goal or dream feels like right now -- not a form question. Keep it to 1-2 sentences.",
     captureAs: 'goal',
-    next: 'discover_interests',
+    next: 'discover_domain',
   },
-  discover_interests: {
-    id: 'discover_interests',
-    kind: 'hybrid',
-    slots: ['interests'],
-    phrasingPrompt:
-      'You are Pathfinder. Given the student just shared their goal, ask casually what they enjoy doing or are curious about -- phrase it naturally, not like a form field.',
-    next: 'discover_wrapup',
+  discover_domain: {
+    id: 'discover_domain',
+    kind: 'fixed',
+    say: 'Cool. Which field are you most into right now?',
+    options: [
+      { label: 'AI/ML', next: 'discover_domain_q1' },
+      { label: 'Cybersecurity', next: 'discover_domain_q1' },
+      { label: 'IoT', next: 'discover_domain_q1' },
+      { label: 'ECE', next: 'discover_domain_q1' },
+      { label: 'EEE', next: 'discover_domain_q1' },
+      { label: 'Web Dev', next: 'discover_domain_q1' },
+      { label: 'Cloud/DevOps', next: 'discover_domain_q1' },
+      { label: 'Mobile Dev', next: 'discover_domain_q1' },
+      { label: 'Blockchain', next: 'discover_domain_q1' },
+      { label: 'Data Science', next: 'discover_domain_q1' },
+    ],
+    captureAs: 'domain',
+  },
+  // Scripted, not LLM-generated: the domain menu already gives a deterministic
+  // key, so a canned per-domain question costs zero tokens and is just as
+  // relevant as an LLM-generated one would be. Cuts 2 of the flow's LLM calls.
+  discover_domain_q1: {
+    id: 'discover_domain_q1',
+    kind: 'fixed',
+    say: 'What draws you to that field the most?',
+    sayByAnswer: {
+      key: 'domain',
+      fallback: 'What draws you to that field the most?',
+      map: {
+        'AI/ML': 'Have you tried training any models yourself, or mostly reading about it so far?',
+        Cybersecurity: 'Have you tried any CTFs or bug-bounty stuff yet, or is this still new territory?',
+        IoT: 'Have you wired up any sensors or boards yourself, like Arduino or Raspberry Pi?',
+        ECE: 'Are you more into the hardware/circuits side, or the signal-processing/software side?',
+        EEE: 'Are you leaning more toward power systems, or control systems and automation?',
+        'Web Dev': 'Frontend, backend, or do you like doing both end to end?',
+        'Cloud/DevOps': 'Have you played with AWS, Docker, or Kubernetes yet, even a little?',
+        'Mobile Dev': 'iOS, Android, or cross-platform stuff like Flutter or React Native?',
+        Blockchain: 'Have you written any smart contracts yet, or is this still conceptual for you?',
+        'Data Science': 'Do you enjoy the analysis and stats side more, or the visualization and storytelling side?',
+      },
+    },
+    captureAs: 'domain_note1',
+    next: 'discover_domain_q2',
+  },
+  discover_domain_q2: {
+    id: 'discover_domain_q2',
+    kind: 'fixed',
+    say: "Have you built or tried anything hands-on in that space yet, even something small?",
+    captureAs: 'domain_note2',
+    next: 'discover_transition',
+  },
+  discover_transition: {
+    id: 'discover_transition',
+    kind: 'fixed',
+    say: "Awesome, that helps a ton. Before we wrap up, let me show you a few important things -- ready?",
+    options: [{ label: "Let's go", next: 'discover_wrapup' }],
+    gesture: 'wave',
+    arm: 'right',
   },
   discover_wrapup: {
     id: 'discover_wrapup',
     kind: 'fixed',
-    say: "Love it. I'm putting together your first roadmap now -- let's go explore the portal.",
+    say: "Here's your roadmap -- your own journey, plus your {answers.domain} track, built just for you.",
     terminal: true,
+    gesture: 'thumbsup',
+    arm: 'right',
   },
 
   // ---- Y2: Build ----
   build_continue: {
     id: 'build_continue',
     kind: 'fixed',
-    say: "Welcome back! Last time you told me you were chasing {answers.goal}. How's that been going?",
+    say: "Welcome back! Last time you told me you were chasing {answers.goal}. {roadmapProgress}How's that been going?",
     next: 'build_activity_check',
+    gesture: 'handshake',
+    arm: 'right',
   },
   build_activity_check: {
     id: 'build_activity_check',
@@ -57,12 +125,16 @@ export const NODES: Record<string, EngineNode> = {
     kind: 'fixed',
     say: 'Good progress. Updating your roadmap with a few internships and hackathons worth trying next.',
     terminal: true,
+    gesture: 'thumbsup',
+    arm: 'right',
   },
   build_catchup_intro: {
     id: 'build_catchup_intro',
     kind: 'fixed',
     say: "Hey, first time we're talking -- even though you're already in year 2! Quick catch-up: what are you aiming for?",
     options: [{ label: "Let's go", next: 'build_catchup_goal' }],
+    gesture: 'wave',
+    arm: 'right',
   },
   build_catchup_goal: {
     id: 'build_catchup_goal',
@@ -85,8 +157,10 @@ export const NODES: Record<string, EngineNode> = {
   convert_continue: {
     id: 'convert_continue',
     kind: 'fixed',
-    say: "You're in the thick of it now. Last we spoke you mentioned {answers.goal} -- how are internship-to-PPO conversations looking?",
+    say: "You're in the thick of it now. Last we spoke you mentioned {answers.goal}. {roadmapProgress}How are internship-to-PPO conversations looking?",
     next: 'convert_ppo_check',
+    gesture: 'handshake',
+    arm: 'right',
   },
   convert_ppo_check: {
     id: 'convert_ppo_check',
@@ -109,12 +183,16 @@ export const NODES: Record<string, EngineNode> = {
     kind: 'fixed',
     say: "Solid. I'm lining up a focused roadmap for converting your {answers.specialization} track into real offers.",
     terminal: true,
+    gesture: 'thumbsup',
+    arm: 'right',
   },
   convert_catchup_intro: {
     id: 'convert_catchup_intro',
     kind: 'fixed',
     say: "First time meeting -- year 3 already! Let's get you a fast, focused catch-up. What's the goal?",
     options: [{ label: "Let's go", next: 'convert_catchup_goal' }],
+    gesture: 'wave',
+    arm: 'right',
   },
   convert_catchup_goal: {
     id: 'convert_catchup_goal',
@@ -129,8 +207,10 @@ export const NODES: Record<string, EngineNode> = {
   launch_continue: {
     id: 'launch_continue',
     kind: 'fixed',
-    say: "Final stretch. Looking back at everything -- {answers.goal}, {answers.conversion_plan} -- how's the placement season treating you?",
+    say: "Final stretch. Looking back at everything -- {answers.goal}, {answers.conversion_plan}. {roadmapProgress}How's the placement season treating you?",
     next: 'launch_offer_check',
+    gesture: 'handshake',
+    arm: 'right',
   },
   launch_offer_check: {
     id: 'launch_offer_check',
@@ -153,12 +233,16 @@ export const NODES: Record<string, EngineNode> = {
     kind: 'fixed',
     say: "You've come a long way since {answers.goal}. Here's your final-stretch roadmap -- let's get you across the line.",
     terminal: true,
+    gesture: 'thumbsup',
+    arm: 'right',
   },
   launch_catchup_intro: {
     id: 'launch_catchup_intro',
     kind: 'fixed',
     say: "First time talking, and it's final year -- let's move fast. What's the target: placement, higher studies, or both?",
     options: [{ label: "Let's go", next: 'launch_catchup_goal' }],
+    gesture: 'wave',
+    arm: 'right',
   },
   launch_catchup_goal: {
     id: 'launch_catchup_goal',

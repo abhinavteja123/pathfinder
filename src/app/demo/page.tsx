@@ -9,12 +9,20 @@ import type { Program, Year } from '@/engine/types';
  * contract. Seeds a demo student via /api/pathfinder/seed (dev-only route)
  * then renders the chat gate standalone, since the real host portal isn't
  * available in this repo. Try /demo?year=3&program=BBA to see other personas.
+ *
+ * No separate pre-chat tour screen -- the GitHub/LinkedIn/Internshala
+ * explainer beats are interleaved INTO the conversation itself (see
+ * PathfinderChat's `isFirstTime` handling), not shown upfront. This page just
+ * tells PathfinderChat whether the student has prior history (via
+ * /api/pathfinder/status) so returning students aren't interrupted with
+ * explainers they've already seen.
  */
 export default function DemoPage() {
   const [ready, setReady] = useState(false);
   const [studentId, setStudentId] = useState('');
   const [year, setYear] = useState<Year>(1);
   const [program, setProgram] = useState<Program>('BTech');
+  const [isFirstTime, setIsFirstTime] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -29,7 +37,12 @@ export default function DemoPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ studentId: id, year: y, program: p }),
-    }).then(() => setReady(true));
+    })
+      .then(() => fetch(`/api/pathfinder/status?studentId=${encodeURIComponent(id)}`))
+      .then((r) => (r.ok ? r.json() : { hasHistory: true }))
+      .then((s: { hasHistory: boolean }) => setIsFirstTime(!s.hasHistory))
+      .catch(() => setIsFirstTime(false))
+      .finally(() => setReady(true));
   }, []);
 
   if (!ready) {
@@ -40,5 +53,5 @@ export default function DemoPage() {
     );
   }
 
-  return <PathfinderChat studentId={studentId} year={year} program={program} />;
+  return <PathfinderChat studentId={studentId} year={year} program={program} isFirstTime={isFirstTime} />;
 }

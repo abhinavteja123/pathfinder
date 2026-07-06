@@ -72,22 +72,50 @@ async function testFullDiscoverConversation() {
   check('turn 1 lands on discover_intro', t1.nodeId === 'discover_intro');
 
   const t2 = await processTurn(ctx, { studentId: 's1', nodeId: 'discover_intro', input: "Let's go" }, router);
-  check('turn 2 advances to discover_goal', t2.nodeId === 'discover_goal');
+  check('turn 2 advances to discover_hobbies', t2.nodeId === 'discover_hobbies');
 
-  const t3 = await processTurn(
+  const t3 = await processTurn(ctx, { studentId: 's1', nodeId: 'discover_hobbies', input: 'reading and gaming' }, router);
+  check(
+    'turn 3 advances to discover_goal and captures hobbies',
+    t3.nodeId === 'discover_goal' && ctx.answers.hobbies === 'reading and gaming'
+  );
+
+  const t4 = await processTurn(
     ctx,
     { studentId: 's1', nodeId: 'discover_goal', input: 'I want to break into product management' },
     router
   );
-  check('turn 3 advances to discover_interests and captures goal', t3.nodeId === 'discover_interests');
-  check('goal captured in context', ctx.answers.goal === 'I want to break into product management');
+  check(
+    'turn 4 advances to discover_domain and captures goal',
+    t4.nodeId === 'discover_domain' && ctx.answers.goal === 'I want to break into product management'
+  );
 
-  const t4 = await processTurn(
+  const t5 = await processTurn(ctx, { studentId: 's1', nodeId: 'discover_domain', input: 'AI/ML' }, router);
+  check(
+    'turn 5 advances to discover_domain_q1 and captures domain',
+    t5.nodeId === 'discover_domain_q1' && ctx.answers.domain === 'AI/ML'
+  );
+
+  const t6 = await processTurn(
     ctx,
-    { studentId: 's1', nodeId: 'discover_interests', input: 'design and writing' },
+    { studentId: 's1', nodeId: 'discover_domain_q1', input: 'built a small image classifier' },
     router
   );
-  check('turn 4 reaches discover_wrapup and marks stage complete', t4.nodeId === 'discover_wrapup' && t4.stageComplete);
+  check('turn 6 advances to discover_domain_q2', t6.nodeId === 'discover_domain_q2');
+
+  const t7 = await processTurn(
+    ctx,
+    { studentId: 's1', nodeId: 'discover_domain_q2', input: 'love the math behind it' },
+    router
+  );
+  check('turn 7 advances to discover_transition', t7.nodeId === 'discover_transition');
+
+  const t8 = await processTurn(ctx, { studentId: 's1', nodeId: 'discover_transition', input: "Let's go" }, router);
+  check('turn 8 reaches discover_wrapup and marks stage complete', t8.nodeId === 'discover_wrapup' && t8.stageComplete);
+  check(
+    'discover_wrapup interpolates {answers.domain} with no blank hole',
+    t8.say.includes('AI/ML') && !t8.say.includes('{answers.')
+  );
 }
 
 async function testHybridSlotCapture() {

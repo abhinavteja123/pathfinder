@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# dev/pilot durable store (FileRepository) -- not for version control
+/.data
+
 # next.js
 /.next/
 /out/

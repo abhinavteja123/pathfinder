@@ -2,19 +2,27 @@ import { resolveEntryNode } from './entry-state';
 import { requireNode } from './nodes';
 import { composeMessages } from './voice';
 import type { LlmRouter } from './llm-router';
-import type { AnimationState, EngineContext, EngineNode, TurnRequest, TurnResponse } from './types';
+import type { AnimationState, Arm, EngineContext, EngineNode, Gesture, TurnRequest, TurnResponse } from './types';
 
 function interpolate(text: string, ctx: EngineContext): string {
-  return text.replace(/\{answers\.(\w+)\}/g, (_, key: string) => ctx.answers[key] ?? '');
+  return text
+    .replace(/\{answers\.(\w+)\}/g, (_, key: string) => ctx.answers[key] ?? '')
+    .replace(/\{roadmapProgress\}/g, ctx.roadmapProgress ?? '');
 }
 
-async function renderNode(
-  node: EngineNode,
-  ctx: EngineContext,
-  router: LlmRouter
-): Promise<{ say: string; animationState: AnimationState }> {
+interface RenderResult {
+  say: string;
+  animationState: AnimationState;
+  gesture?: Gesture;
+  arm?: Arm;
+}
+
+async function renderNode(node: EngineNode, ctx: EngineContext, router: LlmRouter): Promise<RenderResult> {
   if (node.kind === 'fixed') {
-    return { say: interpolate(node.say, ctx), animationState: 'talking' };
+    const raw = node.sayByAnswer
+      ? (node.sayByAnswer.map[ctx.answers[node.sayByAnswer.key]] ?? node.sayByAnswer.fallback ?? node.say)
+      : node.say;
+    return { say: interpolate(raw, ctx), animationState: 'talking', gesture: node.gesture, arm: node.arm };
   }
   if (node.kind === 'llm') {
     const result = await router.chat(composeMessages(ctx, node.systemPrompt));
@@ -41,13 +49,15 @@ export async function processTurn(
 ): Promise<TurnResponse> {
   if (req.nodeId === 'start') {
     const entryNode = requireNode(resolveEntryNode(ctx.year, ctx.hasHistory));
-    const { say, animationState } = await renderNode(entryNode, ctx, router);
+    const { say, animationState, gesture, arm } = await renderNode(entryNode, ctx, router);
     return {
       nodeId: entryNode.id,
       say,
       options: entryNode.kind === 'fixed' ? entryNode.options : undefined,
       animationState,
       stageComplete: !!entryNode.terminal,
+      gesture,
+      arm,
     };
   }
 
@@ -78,7 +88,7 @@ export async function processTurn(
   }
 
   const nextNode = requireNode(nextId);
-  const { say, animationState } = await renderNode(nextNode, ctx, router);
+  const { say, animationState, gesture, arm } = await renderNode(nextNode, ctx, router);
 
   return {
     nodeId: nextNode.id,
@@ -86,5 +96,7 @@ export async function processTurn(
     options: nextNode.kind === 'fixed' ? nextNode.options : undefined,
     animationState,
     stageComplete: !!nextNode.terminal,
+    gesture,
+    arm,
   };
 }
