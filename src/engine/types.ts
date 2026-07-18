@@ -22,6 +22,17 @@ export interface FixedNode {
   /** Supports {answers.KEY} interpolation against EngineContext.answers */
   say: string;
   options?: MenuOption[];
+  /** Optional per-program override for `options` (e.g. the domain menu differs
+   * for BTech vs BBA). Falls back to `options` when the program has no entry. */
+  optionsByProgram?: Partial<Record<Program, MenuOption[]>>;
+  /** Optional per-branch override, keyed by answers.branch (CSE/ECE/Civil/EEE/
+   * Mechanical -- seeded at login, not asked in chat). Wins over optionsByProgram;
+   * falls through when the student has no branch answer (e.g. BBA). */
+  optionsByBranch?: Record<string, MenuOption[]>;
+  /** Multi-select menu: the UI renders checkboxes and sends the chosen option
+   * labels as ONE comma-joined string ("Git, SQL, REST APIs"). fsm captures it
+   * whole into captureAs and advances via `next` (no per-option matching). */
+  multi?: boolean;
   next?: string;
   captureAs?: string;
   /** Optional: pick `say` from a scripted lookup keyed by a captured answer
@@ -85,6 +96,9 @@ export interface TurnResponse {
   nodeId: string;
   say: string;
   options?: MenuOption[];
+  /** True when this node's options are a multi-select (checkbox) menu -- the
+   * client submits the picked labels as one comma-joined string. */
+  multiSelect?: boolean;
   animationState: AnimationState;
   stageComplete: boolean;
   gesture?: Gesture;

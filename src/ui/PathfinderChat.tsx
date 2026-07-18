@@ -7,7 +7,7 @@ import type { MenuOption, Program, TurnResponse, Year } from '@/engine/types';
 import type { RoadmapItemRecord } from '@/data/repository';
 import type { CharacterController } from './character-controller';
 import RoadmapFlow from './RoadmapFlow';
-import { EXPLAINER_SLIDES, shuffle } from './explainer-content';
+import { EXPLAINER_POOLS, Y1_PROFILE_TOUR, shuffle } from './explainer-content';
 
 // Client-only: three.js/WebGL touches window/canvas, so it must not SSR.
 const WebglRobotAvatar = dynamic(() => import('./WebglRobotAvatar'), {
@@ -32,7 +32,19 @@ interface PathfinderChatProps {
    * the conversation (see `send`/`actuallySend` below). Only for students
    * with no prior history -- returning students shouldn't see these again. */
   isFirstTime?: boolean;
+  /** Consecutive-day visit streak from /api/pathfinder/status; shown as a 🔥
+   * HUD pill from 2 days up (a 0/1-day "streak" isn't one yet). */
+  streakDays?: number;
 }
+
+const LEVEL_TITLES = ['ROOKIE', 'EXPLORER', 'NAVIGATOR', 'TRAILBLAZER', 'LEGEND'];
+
+const NUDGES = [
+  'Still there? No rush 🙂',
+  'Psst — pick whichever feels closest, there are no wrong answers!',
+  "Take your time — I'm not going anywhere 🤖",
+  'Stuck? Just say whatever comes to mind first.',
+];
 
 const JOURNEY: { year: Year; name: string }[] = [
   { year: 1, name: 'Discover' },
@@ -65,6 +77,7 @@ export default function PathfinderChat({
   program = 'BTech',
   Avatar = WebglRobotAvatar,
   isFirstTime = false,
+  streakDays = 0,
 }: PathfinderChatProps) {
   const avatarRef = useRef<CharacterController>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -73,18 +86,56 @@ export default function PathfinderChat({
   const [botSay, setBotSay] = useState('');
   const [nodeId, setNodeId] = useState('start');
   const [options, setOptions] = useState<MenuOption[] | undefined>();
+  // Multi-select turns: options render as toggle pills + a Confirm button that
+  // submits the picked labels comma-joined (see TurnResponse.multiSelect).
+  const [multiSelect, setMultiSelect] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
   const [stageComplete, setStageComplete] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
+  // Wandering questioner: which dock the mascot glides to for the current
+  // normal turn (explainer docking takes priority, stageComplete goes static).
+  const [dockPos, setDockPos] = useState<'center' | 'left' | 'right'>('center');
+  // Idle nudge, rendered as a small second line UNDER the question in the
+  // bubble -- never replaces botSay, so the question stays visible.
+  const [nudge, setNudge] = useState<string | null>(null);
+  const nudgeCountRef = useRef(0);
+  const nudgeIdxRef = useRef(0);
   const [roadmap, setRoadmap] = useState<RoadmapItemRecord[]>([]);
   const [visibleWords, setVisibleWords] = useState(0);
-  // Mid-conversation explainer batch (GitHub/LinkedIn/Internshala/etc) -- 5
-  // random slides from the pool, fired as one contiguous "let's explore"
-  // sequence right when the FSM reaches discover_transition, for first-time
-  // students only. `explainerStep` is which slide in the batch is showing (or
-  // null); the answer that triggered the batch waits in `pendingAnswer` until
-  // the whole batch is dismissed, then it's actually sent to the engine.
-  const [explainerBatch] = useState(() => shuffle(EXPLAINER_SLIDES).slice(0, 5));
+  // Session-only game-feel XP layer: +10 per answer, +50 on stage complete.
+  // ponytail: session state only, no persistence -- add an API field if XP ever needs to survive reload.
+  const [xp, setXp] = useState(0);
+  const xpRef = useRef(0);
+  const chipIdRef = useRef(0);
+  const [chips, setChips] = useState<{ id: number; label: string; gold?: boolean }[]>([]);
+  const [hudFlash, setHudFlash] = useState(false);
+  const stageXpRef = useRef(false);
+  const level = Math.floor(xp / 50) + 1;
+  const levelTitle = LEVEL_TITLES[Math.min(level, LEVEL_TITLES.length) - 1];
+  // Randomized one-shot particle burst behind the stage-complete card. Lazy
+  // init is hydration-safe: the spans only render once stageComplete is true.
+  const [burst] = useState(() =>
+    Array.from({ length: 14 }, (_, i) => ({
+      dx: (Math.random() - 0.5) * 240,
+      dy: -(30 + Math.random() * 140),
+      color: ['var(--violet)', 'var(--cyan)', '#fbbf24'][i % 3],
+      delay: Math.random() * 0.2,
+    }))
+  );
+  // Mid-conversation explainer batch (GitHub/LinkedIn/Internshala/etc) -- up
+  // to 5 random slides from the student's per-year pool, fired as one
+  // contiguous "let's explore" sequence at that year's trigger beat (see
+  // `send`), for first-time students only. `explainerStep` is which slide in
+  // the batch is showing (or null); the answer that triggered the batch waits
+  // in `pendingAnswer` until the whole batch is dismissed, then it's actually
+  // sent to the engine.
+  // Y1 gets the deterministic profile-building tour (LeetCode + GitHub first,
+  // then internships/hackathons/open source, per the branch-flow chart);
+  // Y2-4 keep the random 5-of-pool pick.
+  const [explainerBatch] = useState(() =>
+    year === 1 ? Y1_PROFILE_TOUR : shuffle(EXPLAINER_POOLS[year]).slice(0, 5)
+  );
   const [explainerStep, setExplainerStep] = useState<number | null>(null);
   const [explainerBatchDone, setExplainerBatchDone] = useState(false);
   const [pendingAnswer, setPendingAnswer] = useState<string | null>(null);
@@ -115,12 +166,42 @@ export default function PathfinderChat({
     return () => clearInterval(id);
   }, [botSay]);
 
+  function spawnChip(label: string, gold = false) {
+    const id = ++chipIdRef.current;
+    setChips((prev) => [...prev, { id, label, gold }]);
+    setTimeout(() => setChips((prev) => prev.filter((c) => c.id !== id)), 1100);
+  }
+
+  function gainXp(amount: number) {
+    spawnChip(`+${amount} XP`);
+    const before = Math.floor(xpRef.current / 50) + 1;
+    xpRef.current += amount;
+    setXp(xpRef.current);
+    if (Math.floor(xpRef.current / 50) + 1 > before) {
+      spawnChip('+LEVEL UP', true);
+      setHudFlash(true);
+      setTimeout(() => setHudFlash(false), 700);
+    }
+  }
+
   function applyResponse(response: TurnResponse) {
     setMessages((prev) => [...prev, { role: 'bot', text: response.say }]);
     setBotSay(response.say);
     setNodeId(response.nodeId);
     setOptions(response.options);
+    setMultiSelect(!!response.multiSelect);
+    setSelected([]); // fresh picks every turn
     setStageComplete(response.stageComplete);
+    setNudge(null);
+    nudgeCountRef.current = 0;
+    // Wander: glide the mascot to the next dock for each normal question.
+    if (!response.stageComplete) {
+      setDockPos((p) => (p === 'center' ? 'left' : p === 'left' ? 'right' : 'center'));
+    }
+    if (response.stageComplete && !stageXpRef.current) {
+      stageXpRef.current = true;
+      gainXp(50);
+    }
     // Stage-complete is a milestone worth celebrating even though the engine's
     // own animationState for a terminal node is just 'talking'.
     avatarRef.current?.play(response.stageComplete ? 'celebrating' : response.animationState);
@@ -132,8 +213,29 @@ export default function PathfinderChat({
       celebrate: response.stageComplete,
       gesture: response.gesture,
       arm: response.arm,
+      // A wave is a greeting that should last the whole greeting, not ~3s of a
+      // multi-second bubble the student reads at their own pace. Hold it (the
+      // wrist keeps rocking, so it reads as continuous waving) until they answer
+      // and the next reply's speak() replaces it -- otherwise the arm drops mid-
+      // greeting while "Hi! I'm Pathfinder" is still on screen (the screenshot).
+      hold: response.gesture === 'wave',
     });
   }
+
+  // One-shot robot entrance. Animates the transform-free h-72/h-96 container
+  // so gsap's transform never clobbers the inner animate-float /
+  // [transform:translateY(-8%)] on the mascot div itself.
+  const mascotBoxRef = useRef<HTMLDivElement>(null);
+  const enteredRef = useRef(false);
+  useEffect(() => {
+    if (enteredRef.current || !mascotBoxRef.current) return;
+    enteredRef.current = true;
+    gsap.fromTo(
+      mascotBoxRef.current,
+      { scale: 0.6, opacity: 0, y: 30 },
+      { scale: 1, opacity: 1, y: 0, duration: 0.9, ease: 'back.out(1.4)' }
+    );
+  }, []);
 
   const startedRef = useRef(false);
 
@@ -159,7 +261,23 @@ export default function PathfinderChat({
         { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'power2.out' }
       );
     }
-  }, [botSay]);
+  }, [botSay, nudge]);
+
+  // Idle attention beats -- client-only: after ~25s of silence the robot waves
+  // and drops a nudge line. Capped at 2 per question (reset in applyResponse);
+  // `messages`/`input` are deliberate reset-the-timer deps, not reads.
+  useEffect(() => {
+    if (loading || activeExplainer || stageComplete) return;
+    const id = setInterval(() => {
+      if (nudgeCountRef.current >= 2) return;
+      nudgeCountRef.current++;
+      const line = NUDGES[nudgeIdxRef.current++ % NUDGES.length];
+      setNudge(line);
+      avatarRef.current?.speak?.(line, { gesture: 'wave', arm: 'right' });
+    }, 25000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, input, loading, activeExplainer, stageComplete]);
 
   // Keep the transcript card scrolled to the latest turn.
   useEffect(() => {
@@ -192,13 +310,20 @@ export default function PathfinderChat({
 
   async function send(value: string) {
     if (!value.trim() || stageComplete) return;
+    gainXp(10);
     setMessages((prev) => [...prev, { role: 'student', text: value }]);
     setInput('');
 
-    // Intercept exactly once, right at the conversation's transition line:
-    // hold the answer, narrate the 5-slide explainer batch instead of
-    // advancing the FSM. Continuing through all 5 sends the held answer.
-    if (isFirstTime && nodeId === 'discover_transition' && !explainerBatchDone) {
+    // Intercept exactly once, right at the year's trigger beat: Y1 fires at
+    // the discover_transition line; Y2-4 fire on the first answer sent from
+    // their entry node (*_continue / *_catchup_intro). Hold the answer,
+    // narrate the explainer batch instead of advancing the FSM. Continuing
+    // through every slide sends the held answer.
+    const atExplainerBeat =
+      year === 1
+        ? nodeId === 'discover_transition'
+        : nodeId.endsWith('_continue') || nodeId.endsWith('_catchup_intro');
+    if (isFirstTime && atExplainerBeat && !explainerBatchDone) {
       setPendingAnswer(value);
       setExplainerStep(0);
       const slide = explainerBatch[0];
@@ -208,7 +333,7 @@ export default function PathfinderChat({
       // shuffled step index), so a fixed per-slide `arm` value can never
       // reliably point at the card. Step 0 always docks the mascot left (even
       // index), so the card is on the right.
-      avatarRef.current?.speak?.(slide.body, { gesture: slide.gesture, arm: 'right' });
+      avatarRef.current?.speak?.(slide.body, { gesture: slide.gesture, arm: 'right', hold: true });
       return;
     }
 
@@ -224,7 +349,7 @@ export default function PathfinderChat({
       // Same card-pointing logic as the first slide above: mascot docks left on
       // even steps (card on the right, point right) and right on odd steps
       // (card on the left, point left).
-      avatarRef.current?.speak?.(slide.body, { gesture: slide.gesture, arm: nextStep % 2 === 0 ? 'right' : 'left' });
+      avatarRef.current?.speak?.(slide.body, { gesture: slide.gesture, arm: nextStep % 2 === 0 ? 'right' : 'left', hold: true });
       return;
     }
     setExplainerStep(null);
@@ -244,9 +369,41 @@ export default function PathfinderChat({
           </span>
           <span className="font-display text-lg font-semibold tracking-tight">Pathfinder</span>
         </div>
-        <span className="glass hidden rounded-full px-3.5 py-1.5 text-xs font-medium text-[var(--ink-dim)] sm:block">
-          {program} · Year {year}
-        </span>
+        <div className="relative hidden items-center gap-2 sm:flex">
+          <span className="glass rounded-full px-3.5 py-1.5 text-xs font-medium text-[var(--ink-dim)]">
+            {program} · Year {year}
+          </span>
+          {streakDays >= 2 && (
+            <span className="glass rounded-full px-3.5 py-1.5 font-display text-xs font-semibold text-[#fbbf24]">
+              🔥 {streakDays}-day streak
+            </span>
+          )}
+          {/* game-style XP HUD */}
+          <div
+            className={`glass flex items-center gap-2 rounded-full px-3.5 py-1.5 ${hudFlash ? 'hud-pop' : ''}`}
+          >
+            <span className="font-display text-xs font-semibold tracking-wide text-[var(--ink)]">
+              LVL {level} · {levelTitle}
+            </span>
+            <span className="h-1.5 w-14 overflow-hidden rounded-full bg-white/10">
+              <span
+                className="block h-full rounded-full bg-gradient-to-r from-[var(--violet)] to-[var(--cyan)] transition-[width] duration-500 ease-out"
+                style={{ width: `${(xp % 50) * 2}%` }}
+              />
+            </span>
+          </div>
+          {/* floating XP gain chips */}
+          {chips.map((c) => (
+            <span
+              key={c.id}
+              className={`xp-chip pointer-events-none absolute -bottom-7 right-3 font-mono text-xs font-semibold ${
+                c.gold ? 'text-[#fbbf24]' : 'text-[var(--cyan)]'
+              }`}
+            >
+              {c.label}
+            </span>
+          ))}
+        </div>
       </header>
 
       {/* left: live transcript card (real conversation, not decoration) --
@@ -317,7 +474,7 @@ export default function PathfinderChat({
       {/* center hero -- bubble + mascot grouped as one tight unit */}
       <section
         className={`relative z-10 flex flex-1 flex-col items-center justify-center px-4 ${
-          activeExplainer ? 'sm:min-h-[24rem]' : ''
+          stageComplete ? '' : 'sm:min-h-[24rem]'
         }`}
       >
         <div
@@ -326,7 +483,14 @@ export default function PathfinderChat({
               ? `sm:absolute sm:top-1/2 sm:-translate-y-1/2 sm:transition-[left] sm:duration-700 sm:ease-in-out ${
                   explainerOnLeft ? 'sm:left-[4%]' : 'sm:left-[54%]'
                 }`
-              : ''
+              : !stageComplete
+                ? `sm:absolute sm:top-1/2 sm:-translate-y-1/2 sm:transition-[left] sm:duration-700 sm:ease-in-out ${
+                    // Wander docks stay inside the center zone so the fixed side
+                    // panels (transcript left-6 w-64, journey right-6 w-60) never
+                    // overlap. ponytail: eyeballed for 1280px+, tune if panels widen.
+                    dockPos === 'left' ? 'sm:left-[22%]' : dockPos === 'right' ? 'sm:left-[46%]' : 'sm:left-[34%]'
+                  }`
+                : ''
           }`}
         >
           {/* speech bubble, anchored just above the mascot's head -- shows the
@@ -349,6 +513,9 @@ export default function PathfinderChat({
                   {botSay.split(' ').slice(0, visibleWords).join(' ')}
                 </p>
               )}
+              {!activeExplainer && nudge && (
+                <p className="mt-1.5 text-xs text-[var(--ink-dim)]">{nudge}</p>
+              )}
               {!activeExplainer && loading && botSay && (
                 <div className="mt-2 flex justify-center">
                   <TypingDots />
@@ -359,31 +526,11 @@ export default function PathfinderChat({
             <div className="mx-auto -mt-1.5 h-4 w-4 rotate-45 rounded-[4px] border-b border-r border-[var(--glass-brd)] bg-[var(--glass)]" />
           </div>
 
-          {/* mascot on glowing ring platform */}
-          <div className="relative flex h-72 w-72 items-center justify-center sm:h-96 sm:w-96">
-            {/* ground glow pool */}
-            <div className="pointer-events-none absolute bottom-12 left-1/2 h-24 w-64 -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse,_rgba(203,213,225,0.40),_rgba(148,163,184,0.22)_45%,_transparent_70%)] blur-2xl" />
-            {/* spinning ring platform (flattened to a ground ellipse) */}
-            <div className="pointer-events-none absolute bottom-16 left-1/2 -translate-x-1/2 [transform:translateX(-50%)_perspective(420px)_rotateX(72deg)]">
-              <div
-                className="ring-spin h-56 w-56 rounded-full"
-                style={{
-                  background:
-                    'conic-gradient(from 0deg, transparent, rgba(203,213,225,0.05), rgba(148,163,184,0.85), rgba(203,213,225,0.95), transparent 75%)',
-                  WebkitMask: 'radial-gradient(circle, transparent 58%, #000 60%)',
-                  mask: 'radial-gradient(circle, transparent 58%, #000 60%)',
-                }}
-              />
-              <div
-                className="ring-spin-rev absolute inset-4 rounded-full"
-                style={{
-                  background:
-                    'conic-gradient(from 180deg, transparent, rgba(148,163,184,0.5), transparent 60%)',
-                  WebkitMask: 'radial-gradient(circle, transparent 62%, #000 64%)',
-                  mask: 'radial-gradient(circle, transparent 62%, #000 64%)',
-                }}
-              />
-            </div>
+          {/* mascot -- its ground ring lives INSIDE the WebGL scene (RobotViewer's
+              underglow ring), so no CSS ring platform here: the doubled/misaligned
+              circles in a user screenshot were this CSS ring + the WebGL one.
+              The WebGL ring moves with the robot, always aligned, so it stays. */}
+          <div ref={mascotBoxRef} className="relative flex h-72 w-72 items-center justify-center sm:h-96 sm:w-96">
             {/* the mascot -- nudged up so its head meets the bubble tail */}
             <div className="animate-float relative z-10 h-full w-full [transform:translateY(-8%)]">
               <Avatar ref={avatarRef} />
@@ -428,7 +575,25 @@ export default function PathfinderChat({
             </button>
           </div>
         ) : stageComplete ? (
-          <div className="glass animate-rise rounded-2xl px-5 py-4 text-center">
+          <div className="relative">
+            {/* one-shot celebration burst from behind the card */}
+            <div className="pointer-events-none absolute inset-0" aria-hidden>
+              {burst.map((p, i) => (
+                <span
+                  key={i}
+                  className="burst-particle absolute left-1/2 top-1/2 h-2 w-2 rounded-full"
+                  style={
+                    {
+                      background: p.color,
+                      animationDelay: `${p.delay}s`,
+                      '--dx': `${p.dx}px`,
+                      '--dy': `${p.dy}px`,
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
+            </div>
+            <div className="glass animate-rise relative rounded-2xl px-5 py-4 text-center">
             <p className="font-display text-base font-semibold text-[var(--cyan)]">
               🎉 Onboarding complete — here&apos;s your roadmap.
             </p>
@@ -459,21 +624,45 @@ export default function PathfinderChat({
             >
               Open full roadmap →
             </a>
+            </div>
           </div>
         ) : (
           <>
             {options && options.length > 0 ? (
               <div className="flex flex-wrap justify-center gap-2">
-                {options.map((o) => (
+                {options.map((o) => {
+                  const picked = multiSelect && selected.includes(o.label);
+                  return (
+                    <button
+                      key={o.label}
+                      onClick={() =>
+                        multiSelect
+                          ? setSelected((prev) =>
+                              prev.includes(o.label) ? prev.filter((l) => l !== o.label) : [...prev, o.label]
+                            )
+                          : send(o.label)
+                      }
+                      disabled={loading}
+                      aria-pressed={multiSelect ? picked : undefined}
+                      className={
+                        picked
+                          ? 'rounded-full bg-gradient-to-br from-[var(--violet)] to-[var(--violet-deep)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(124,92,255,0.55)] transition-all duration-150 active:scale-95 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan)]'
+                          : 'glass rounded-full px-4 py-2.5 text-sm text-[var(--ink)] transition-all duration-150 hover:border-[var(--cyan)]/50 hover:text-white active:scale-95 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan)]'
+                      }
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
+                {multiSelect && (
                   <button
-                    key={o.label}
-                    onClick={() => send(o.label)}
-                    disabled={loading}
-                    className="glass rounded-full px-4 py-2.5 text-sm text-[var(--ink)] transition-all duration-150 hover:border-[var(--cyan)]/50 hover:text-white active:scale-95 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan)]"
+                    onClick={() => send(selected.join(', '))}
+                    disabled={loading || selected.length === 0}
+                    className="rounded-full bg-gradient-to-br from-[var(--violet)] to-[var(--violet-deep)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(124,92,255,0.55)] transition-transform duration-150 active:scale-95 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan)]"
                   >
-                    {o.label}
+                    Confirm ✓
                   </button>
-                ))}
+                )}
               </div>
             ) : (
               <form
@@ -491,6 +680,8 @@ export default function PathfinderChat({
                   className="flex-1 bg-transparent text-sm text-[var(--ink)] placeholder:text-[var(--ink-dim)] focus:outline-none"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onFocus={() => { if (!loading) avatarRef.current?.play('listening'); }}
+                  onBlur={() => { if (!loading) avatarRef.current?.play('idle'); }}
                   placeholder={`Message Pathfinder…`}
                   disabled={loading}
                 />

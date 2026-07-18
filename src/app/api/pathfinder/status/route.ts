@@ -15,15 +15,27 @@ export async function GET(request: NextRequest) {
 
   const onboarding = await repo.getOnboardingState(studentId);
   const checkin = await repo.getCheckin(studentId);
-  const conversationLog = await repo.getConversationLog(studentId, 1);
+  const conversationLog = await repo.getConversationLog(studentId);
   const onboardingComplete = onboarding?.stage === 'complete';
   const reengagementDue =
     onboardingComplete && !!checkin?.nextDueAt && new Date(checkin.nextDueAt) <= new Date();
+
+  // Streak: consecutive UTC calendar days with >=1 conversation-log row,
+  // counting back from today (no activity today -> 0). createdAt is an ISO
+  // string, so its first 10 chars are the UTC date.
+  const activeDays = new Set(conversationLog.map((e) => e.createdAt.slice(0, 10)));
+  let streakDays = 0;
+  const cursor = new Date();
+  while (activeDays.has(cursor.toISOString().slice(0, 10))) {
+    streakDays++;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
 
   return NextResponse.json({
     onboardingComplete,
     reengagementDue,
     year: student.year,
     hasHistory: conversationLog.length > 0,
+    streakDays,
   });
 }

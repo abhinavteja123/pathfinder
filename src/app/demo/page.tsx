@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import PathfinderChat from '@/ui/PathfinderChat';
+import CyberIntro from '@/ui/CyberIntro';
 import type { Program, Year } from '@/engine/types';
 
 /**
@@ -23,27 +24,59 @@ export default function DemoPage() {
   const [year, setYear] = useState<Year>(1);
   const [program, setProgram] = useState<Program>('BTech');
   const [isFirstTime, setIsFirstTime] = useState(false);
+  const [streakDays, setStreakDays] = useState(0);
+  const [showIntro, setShowIntro] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const y = (Number(params.get('year')) || 1) as Year;
     const p = (params.get('program') as Program) || 'BTech';
+    // Branch = the "student details" fetched at login (flow chart). BTech
+    // defaults to CSE when the picker didn't specify; BBA has no branch.
+    const b = params.get('branch') || (p === 'BTech' ? 'CSE' : undefined);
     const id = params.get('studentId') || `demo-y${y}-${p}-${Date.now()}`;
     setStudentId(id);
     setYear(y);
     setProgram(p);
 
+    // No explicit studentId (freshly generated demo id) or the picker's
+    // fresh=1 hint => first-time student: start the cyber intro optimistically
+    // so it doubles as the loading screen while seed/status resolve underneath.
+    if (!params.get('studentId') || params.get('fresh') === '1') setShowIntro(true);
+
     fetch('/api/pathfinder/seed', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId: id, year: y, program: p }),
+      body: JSON.stringify({ studentId: id, year: y, program: p, branch: b }),
     })
       .then(() => fetch(`/api/pathfinder/status?studentId=${encodeURIComponent(id)}`))
       .then((r) => (r.ok ? r.json() : { hasHistory: true }))
-      .then((s: { hasHistory: boolean }) => setIsFirstTime(!s.hasHistory))
+      .then((s: { hasHistory: boolean; streakDays?: number }) => {
+        const first = !s.hasHistory;
+        setIsFirstTime(first);
+        setStreakDays(s.streakDays ?? 0);
+        if (first) setShowIntro(true);
+      })
       .catch(() => setIsFirstTime(false))
       .finally(() => setReady(true));
   }, []);
+
+  const handleIntroDone = useCallback(() => setIntroDone(true), []);
+
+  // Intro doubles as loader; if status resolves to a returning student while
+  // it's up, `skip` fades it out immediately. Chat mounts only once BOTH
+  // ready and the intro's onDone have fired.
+  if (showIntro && !introDone) {
+    return (
+      <CyberIntro
+        year={year}
+        program={program}
+        skip={ready && !isFirstTime}
+        onDone={handleIntroDone}
+      />
+    );
+  }
 
   if (!ready) {
     return (
@@ -53,5 +86,5 @@ export default function DemoPage() {
     );
   }
 
-  return <PathfinderChat studentId={studentId} year={year} program={program} isFirstTime={isFirstTime} />;
+  return <PathfinderChat studentId={studentId} year={year} program={program} isFirstTime={isFirstTime} streakDays={streakDays} />;
 }

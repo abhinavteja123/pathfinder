@@ -6,7 +6,7 @@ import type { CharacterController } from './character-controller';
 import { RobotViewer, type RobotViewerRef } from './webgl/RobotViewer';
 import RobotAvatar from './RobotAvatar';
 
-type Expression = 'idle' | 'listening' | 'thinking' | 'speaking' | 'happy' | 'surprised' | 'angry' | 'laughing';
+type Expression = 'idle' | 'listening' | 'thinking' | 'speaking' | 'happy' | 'surprised' | 'angry' | 'laughing' | 'celebrating';
 type Mood = 'happy' | 'angry' | 'laughing' | null;
 
 /**
@@ -23,7 +23,9 @@ const EXPRESSION: Record<AnimationState, Expression> = {
   listening: 'listening',
   thinking: 'thinking',
   talking: 'speaking',
-  celebrating: 'happy',
+  // Passed through (not mapped to 'happy') so RobotViewer's edge-detected
+  // celebration spin can fire; the viewer renders it with the happy face.
+  celebrating: 'celebrating',
 };
 
 /** Lightweight keyword heuristic -- picks a mood to color the face/voice while
@@ -65,12 +67,16 @@ const WebglRobotAvatar = forwardRef<CharacterController>(function WebglRobotAvat
         if (state === 'listening') viewerRef.current?.playRoboticSound('listening');
         if (state === 'thinking') viewerRef.current?.playRoboticSound('thinking');
       },
-      speak(text: string, opts?: { celebrate?: boolean; gesture?: Gesture; arm?: Arm }) {
+      speak(text: string, opts?: { celebrate?: boolean; gesture?: Gesture; arm?: Arm; hold?: boolean }) {
         if (failed) return;
-        if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-        window.speechSynthesis.cancel();
-        const mood: Mood = opts?.celebrate ? 'happy' : detectMood(text);
+        // `hold` beats are narration the robot OWNS the timing of (explainer
+        // slide up until a button click, intro wave until the student answers).
+        // Force the speaking face and skip mood detection -- otherwise a slide
+        // whose body happens to contain a "happy" keyword (e.g. Kaggle's "great
+        // if data/AI is your thing") flips the expression to happy/green
+        // mid-narration, the reported "talking emotion not coming sometimes".
+        const mood: Mood = opts?.hold ? null : opts?.celebrate ? 'happy' : detectMood(text);
         const moodExpression: Expression =
           mood === 'angry' ? 'angry' : mood === 'laughing' ? 'laughing' : mood === 'happy' ? 'happy' : 'speaking';
 
@@ -81,11 +87,42 @@ const WebglRobotAvatar = forwardRef<CharacterController>(function WebglRobotAvat
         // Scripted per-node gesture (deterministic -- same node, same gesture,
         // every time) takes priority over keyword mood-detection, which stays
         // as the fallback for free-text llm/hybrid nodes that have no authored
-        // gesture at all.
-        if (opts?.gesture) viewerRef.current?.triggerGestureAnimation(opts.gesture, opts.arm);
+        // gesture at all. `hold` keeps the pose up (no auto-clear) until the
+        // next speak() replaces it -- see triggerGestureAnimation.
+        if (opts?.gesture) viewerRef.current?.triggerGestureAnimation(opts.gesture, opts.arm, opts.hold);
         else if (mood === 'laughing') viewerRef.current?.triggerGestureAnimation('wave');
         else if (mood === 'happy') viewerRef.current?.triggerGestureAnimation('thumbsup');
         else if (mood === 'angry') viewerRef.current?.triggerGestureAnimation('stop');
+
+        const hasTTS = typeof window !== 'undefined' && !!window.speechSynthesis;
+        if (hasTTS) window.speechSynthesis.cancel();
+
+        // Held beats never auto-release: the pose + speaking face stay until the
+        // caller fires the next speak()/stopGesture (the "Continue" click, or the
+        // next FSM reply). Speak the line if we can; its end doesn't end the pose.
+        if (opts?.hold) {
+          if (hasTTS) {
+            const u = new SpeechSynthesisUtterance(text);
+            u.rate = 1.02;
+            window.speechSynthesis.speak(u);
+          }
+          return;
+        }
+
+        const MIN_GESTURE_HOLD_MS = 2500;
+        const release = () => {
+          setIsSpeaking(false);
+          setExpression('idle');
+          viewerRef.current?.stopGesture();
+        };
+
+        // No TTS available (no audio device / unsupported browser): the pose was
+        // still set above, so release it after a fixed beat instead of leaving
+        // the robot frozen mid-gesture with no onend to ever fire.
+        if (!hasTTS) {
+          setTimeout(release, MIN_GESTURE_HOLD_MS);
+          return;
+        }
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 1.02;
@@ -98,13 +135,7 @@ const WebglRobotAvatar = forwardRef<CharacterController>(function WebglRobotAvat
         // margin -- 2500ms costs nothing (utterances this long normally take
         // several seconds to actually speak) but reliably survives an
         // instant-onend environment instead of releasing mid-lerp.
-        const MIN_GESTURE_HOLD_MS = 2500;
         const speakStartedAt = Date.now();
-        const release = () => {
-          setIsSpeaking(false);
-          setExpression('idle');
-          viewerRef.current?.stopGesture();
-        };
         const finish = () => {
           const elapsed = Date.now() - speakStartedAt;
           if (elapsed >= MIN_GESTURE_HOLD_MS) release();

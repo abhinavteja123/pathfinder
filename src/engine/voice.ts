@@ -30,6 +30,7 @@ Hard rules, always:
 export function buildProfileLine(ctx: EngineContext): string {
   const pack = CONTENT_PACKS[ctx.program];
   const bits: string[] = [`Year ${ctx.year} ${ctx.program} student`];
+  if (ctx.answers.branch) bits.push(`branch: ${ctx.answers.branch}`);
   if (ctx.answers.goal) bits.push(`their goal: ${ctx.answers.goal}`);
   if (ctx.answers.hobbies) bits.push(`hobbies: ${ctx.answers.hobbies}`);
   if (ctx.answers.domain) bits.push(`chosen field: ${ctx.answers.domain}`);

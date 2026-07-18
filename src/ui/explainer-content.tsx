@@ -83,6 +83,24 @@ function ChatIcon() {
   );
 }
 
+function BanknoteIcon() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M5.5 12h.01M18.5 12h.01" />
+    </svg>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 3 2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.9l-5.4 2.9 1.1-6.1L3.2 9.4l6.1-.8L12 3Z" />
+    </svg>
+  );
+}
+
 /** Browser-chrome mockup (traffic-light dots + colored "page") so a slide
  * reads as a photo/screenshot of the actual site, not just an icon badge. */
 export function BrowserFrame({ bg, children }: { bg: string; children: ReactNode }) {
@@ -211,6 +229,192 @@ export const EXPLAINER_SLIDES: ExplainerSlide[] = [
     ),
   },
 ];
+
+/** Year 2 "Build" beats -- practice, hackathons, portfolio, open source. */
+const Y2_SLIDES: ExplainerSlide[] = [
+  {
+    key: 'leetcode-basics',
+    title: 'Start LeetCode basics',
+    body: 'Second year is when DSA practice starts paying off — a few easy problems a day beats a cram later.',
+    gesture: 'thumbsup',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#1a1a1a">
+        <CodeBracketsIcon />
+        <span className="font-display text-base font-semibold text-white">LeetCode</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'devfolio-hackathons',
+    title: 'Hackathons on Devfolio',
+    body: 'Team up, build something in a weekend, and walk away with a project, a certificate, and a network.',
+    gesture: 'peace',
+    arm: 'left',
+    visual: (
+      <BrowserFrame bg="#6C3CE9">
+        <TrophyIcon />
+        <span className="font-display text-base font-semibold text-white">Devfolio</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'github-readme',
+    title: 'Your GitHub README portfolio',
+    body: 'Pin your best repos and write a profile README — it is the first thing anyone sees on your profile.',
+    gesture: 'handshake',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#181717">
+        <GitHubMark />
+        <span className="font-display text-base font-semibold text-white">GitHub</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'gsoc',
+    title: 'Google Summer of Code',
+    body: 'Get paid to contribute to real open source with a mentor. Applications open early — start prepping now.',
+    gesture: 'thumbsup',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#4285F4">
+        <GraduationCapIcon />
+        <span className="font-display text-base font-semibold text-white">GSoC</span>
+      </BrowserFrame>
+    ),
+  },
+];
+
+/** Year 3 "Convert" beats -- interview prep and getting in the door. */
+const Y3_SLIDES: ExplainerSlide[] = [
+  {
+    key: 'levelsfyi',
+    title: 'This is Levels.fyi',
+    body: 'Real salary data by company and level — know what an offer should look like before you interview.',
+    gesture: 'thumbsup',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#0E2439">
+        <ChartIcon />
+        <span className="font-display text-base font-semibold text-white">Levels.fyi</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'glassdoor',
+    title: 'This is Glassdoor',
+    body: 'Interview reviews from people who actually sat the interview — read them before every company round.',
+    gesture: 'peace',
+    arm: 'left',
+    visual: (
+      <BrowserFrame bg="#0CAA41">
+        <ChatIcon />
+        <span className="font-display text-base font-semibold text-white">Glassdoor</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'linkedin-referrals',
+    title: 'LinkedIn referral DMs',
+    body: 'A short, specific DM to an alum or employee can get you referred — referrals beat cold applications.',
+    gesture: 'handshake',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#0A66C2">
+        <LinkedInMark />
+        <span className="font-display text-base font-semibold text-white">LinkedIn</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'system-design-primer',
+    title: 'system-design-primer',
+    body: 'The free GitHub repo everyone preps system design interviews with — star it and work through it.',
+    gesture: 'thumbsup',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#181717">
+        <GitHubMark />
+        <span className="font-display text-base font-semibold text-white">GitHub</span>
+      </BrowserFrame>
+    ),
+  },
+];
+
+/** Year 4 "Launch" beats -- offers, exams, off-campus, interviews. */
+const Y4_SLIDES: ExplainerSlide[] = [
+  {
+    key: 'salary-negotiation',
+    title: 'Negotiate your offer',
+    body: 'The first number is rarely the final one. A polite counter backed by market data can add lakhs.',
+    gesture: 'thumbsup',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#15803d">
+        <BanknoteIcon />
+        <span className="font-display text-base font-semibold text-white">Negotiation</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'gate-gre',
+    title: 'GATE & GRE lanes',
+    body: 'Higher studies? GATE for IITs and PSUs, GRE for abroad — both need months of prep, so pick a lane early.',
+    gesture: 'peace',
+    arm: 'left',
+    visual: (
+      <BrowserFrame bg="#5E35B1">
+        <GraduationCapIcon />
+        <span className="font-display text-base font-semibold text-white">GATE / GRE</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'naukri',
+    title: 'This is Naukri',
+    body: 'Off-campus drives and fresher openings live here — set job alerts and keep your profile fresh.',
+    gesture: 'handshake',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#275DF5">
+        <BriefcaseIcon />
+        <span className="font-display text-base font-semibold text-white">Naukri</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'star-method',
+    title: 'The STAR method',
+    body: 'Situation, Task, Action, Result — the structure for every behavioral answer. Practice your stories in it.',
+    gesture: 'thumbsup',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#F59E0B">
+        <StarIcon />
+        <span className="font-display text-base font-semibold text-white">STAR</span>
+      </BrowserFrame>
+    ),
+  },
+];
+
+/** Per-year explainer pools -- PathfinderChat picks by its `year` prop.
+ * Year 1 keeps the original discovery pool above. */
+export const EXPLAINER_POOLS: Record<1 | 2 | 3 | 4, ExplainerSlide[]> = {
+  1: EXPLAINER_SLIDES,
+  2: Y2_SLIDES,
+  3: Y3_SLIDES,
+  4: Y4_SLIDES,
+};
+
+/** Y1 profile-building tour, in the flow chart's order: LeetCode + GitHub
+ * profile FIRST (the "build your profile" previews), then internships
+ * (Internshala), hackathons (Devfolio), and open source (GSoC, borrowed from
+ * the Y2 pool). Deterministic -- no shuffle -- so every fresh Y1 student gets
+ * exactly this walkthrough. */
+export const Y1_PROFILE_TOUR: ExplainerSlide[] = ['leetcode', 'github', 'internshala', 'devfolio', 'gsoc']
+  .map((key) => [...EXPLAINER_SLIDES, ...EXPLAINER_POOLS[2]].find((s) => s.key === key))
+  .filter((s): s is ExplainerSlide => s !== undefined);
 
 /** Fisher-Yates -- used to pick "any 5 random" of the pool above per conversation. */
 export function shuffle<T>(items: T[]): T[] {

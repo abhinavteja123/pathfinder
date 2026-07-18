@@ -97,6 +97,29 @@ body {
 .ring-spin-rev { animation: ring-spin-rev 20s linear infinite; }
 .glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
 
+/* ---- Session XP game-feel layer (PathfinderChat header HUD) ---- */
+/* Floating "+10 XP" gain chip: drift up + fade, then unmounted by React */
+@keyframes xp-float {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-26px); }
+}
+.xp-chip { animation: xp-float 1s ease-out forwards; }
+
+/* Level-up flash on the HUD pill */
+@keyframes hud-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.12); box-shadow: 0 0 24px rgba(56, 225, 255, 0.6); }
+  100% { transform: scale(1); }
+}
+.hud-pop { animation: hud-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Stage-complete particle burst: per-span direction via --dx/--dy inline vars */
+@keyframes burst-fly {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.4); }
+}
+.burst-particle { animation: burst-fly 0.9s ease-out forwards; }
+
 /* Thin custom scrollbar for the chat overlay */
 .chat-scroll::-webkit-scrollbar { width: 6px; }
 .chat-scroll::-webkit-scrollbar-thumb {

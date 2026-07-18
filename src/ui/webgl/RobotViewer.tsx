@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 export interface RobotViewerRef {
   triggerWaving: (duration?: number) => void;
-  triggerGestureAnimation: (gesture: "wave" | "thumbsup" | "peace" | "stop" | "handshake", side?: "left" | "right") => void;
+  triggerGestureAnimation: (gesture: "wave" | "thumbsup" | "peace" | "stop" | "handshake", side?: "left" | "right", hold?: boolean) => void;
   updateRealtimeGesture: (gesture: "wave" | "thumbsup" | "peace" | "stop" | "handshake" | null, side: "left" | "right" | null) => void;
   playRoboticSound: (type: "startup" | "success" | "chime" | "thinking" | "listening" | "interrupted") => void;
   /** Ends the current gesture immediately (arms return to idle breathing pose).
@@ -16,7 +16,7 @@ export interface RobotViewerRef {
 }
 
 interface RobotViewerProps {
-  expression: "idle" | "listening" | "thinking" | "speaking" | "happy" | "surprised" | "angry" | "laughing";
+  expression: "idle" | "listening" | "thinking" | "speaking" | "happy" | "surprised" | "angry" | "laughing" | "celebrating";
   isSpeaking: boolean;
   theme?: "light" | "dark";
 }
@@ -48,9 +48,19 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
     const expressionRef = useRef(expression);
     const isSpeakingRef = useRef(isSpeaking);
     const mouseRef = useRef({ x: 0, y: 0 });
+    // One-shot celebration-spin trigger: set on the ->'celebrating' edge in the
+    // sync effect below, consumed inside animate() (pokePending-style flag).
+    const celebrateSpinRef = useRef(false);
 
     // Sync props with refs to avoid re-running effects
     useEffect(() => {
+      // Edge-detect the transition INTO 'celebrating' (expressionRef still
+      // holds the previous value here) so the spin fires once per transition,
+      // not continuously while the state is held. animate() swallows the flag
+      // if a spin is already in flight.
+      if (expression === "celebrating" && expressionRef.current !== "celebrating") {
+        celebrateSpinRef.current = true;
+      }
       expressionRef.current = expression;
     }, [expression]);
 
@@ -264,7 +274,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
           activeArmRef.current = side || (gesture === "peace" ? "left" : "right");
         }
       },
-      triggerGestureAnimation: (gesture, side) => {
+      triggerGestureAnimation: (gesture, side, hold) => {
         setCurrentGesture(gesture);
         gestureTypeRef.current = gesture;
         gestureTimeRef.current = 0;
@@ -280,6 +290,11 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         } else {
           playSynthSound("chime");
         }
+        // `hold` beats own their own on-screen lifetime (explainer slide shown
+        // until a button click, intro wave held until the student answers) --
+        // the caller releases them via stopGesture()/the next trigger, so no
+        // auto-clear here or the arm would drop mid-slide (the reported glitch).
+        if (hold) return;
         // Safety-net only -- the real release is stopGesture(), called from
         // WebglRobotAvatar's TTS onend/onerror so the hold matches actual
         // speech length. This just guards against onend never firing (e.g.
@@ -370,6 +385,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
           case "happy":
           case "thumbsup":
           case "wave":
+          case "celebrating":
             return { primary: "#10b981", glow: "#059669", bgGlow: "rgba(16, 185, 129, 0.30)" }; // emerald green
           case "listening":
             return { primary: "#3b82f6", glow: "#2563eb", bgGlow: "rgba(59, 130, 246, 0.28)" }; // tech blue
@@ -421,7 +437,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
           ctx.moveTo(-size, 0);
           ctx.lineTo(size, 0);
           ctx.stroke();
-        } else if (type === "happy" || type === "thumbsup") {
+        } else if (type === "happy" || type === "thumbsup" || type === "celebrating") {
           // Cute inverted U shaped smile eye
           ctx.beginPath();
           ctx.arc(0, size * 0.2, size, Math.PI, 0, false);
@@ -501,7 +517,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
             ctx.lineTo(i, waveY);
           }
           ctx.stroke();
-        } else if (type === "happy" || type === "thumbsup") {
+        } else if (type === "happy" || type === "thumbsup" || type === "celebrating") {
           // Big smiling mouth
           ctx.beginPath();
           ctx.arc(0, -10, width * 0.7, 0, Math.PI, false);
@@ -552,8 +568,10 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
       };
 
       // Updates canvas texture with expressions
-      const updateFaceCanvas = (time: number, blink: number) => {
-        const curExp = expressionRef.current;
+      const updateFaceCanvas = (time: number, blink: number, pokeFace: boolean) => {
+        // A fresh poke borrows the existing 'surprised' face for ~1s -- only
+        // ever true when no gesture is active/held (gated in animate()).
+        const curExp = pokeFace ? "surprised" : expressionRef.current;
         const curSpk = isSpeakingRef.current;
         const activeGest = gestureTypeRef.current;
         
@@ -604,6 +622,10 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         clearcoatRoughness: 0.05, // Mirror-like specular highlights
       });
 
+      // Reused each frame to lighten the mood color for the finger/accent tint
+      // (see the recolor block in animate()) -- defined once, not per-frame.
+      const WHITE = new THREE.Color(0xffffff);
+
       const screenMaterial = new THREE.MeshBasicMaterial({
         map: faceTexture,
         toneMapped: false,
@@ -622,7 +644,8 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
 
       // 5. Build Robot Structure
       const robotGroup = new THREE.Group();
-      robotGroup.scale.set(0.8, 0.8, 0.8);
+      const robotBaseScale = 0.8; // single source of truth -- the poke bounce below restores to this
+      robotGroup.scale.set(robotBaseScale, robotBaseScale, robotBaseScale);
       scene.add(robotGroup);
 
       // --- Head ---
@@ -890,6 +913,18 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
       let blinkInterval = 4.0; // blink every 4s
       let isBlinking = false;
 
+      // Poke interaction state (set by the pointerdown handler after animate(),
+      // consumed inside the loop -- same closure-var pattern as the blink state).
+      let pokePending = false; // a raycast-confirmed poke waiting for the next frame
+      let pokeStart = -1; // clock time the current squash bounce began, -1 = none
+      let pokeFaceUntil = -1; // clock time until the 'surprised'/pink flash holds
+      let lastPokeMs = -Infinity; // performance.now() of last accepted poke (700ms cooldown)
+
+      // A4 body-lean + celebration-spin state (same closure-var pattern).
+      let leanX = 0; // smoothed pointer-lean offsets -- computed in A4, leanY
+      let leanY = 0; // is injected into block A's position.y write
+      let celebrateSpinStart = -1; // clock time the 360-spin began, -1 = none
+
       // 8. Animation & Render Loop
       let animationFrameId: number;
       
@@ -901,7 +936,86 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
 
         // A. Natural vertical hover float (sine-wave) - Optimized to be perfectly centered and clear overlays
         const floatY = Math.sin(time * 1.8) * 0.12;
-        robotGroup.position.y = -0.75 + floatY;
+        // leanY (A4 cursor lean) rides this SAME write -- position.y keeps its
+        // single writer; one-frame-stale leanY is invisible at a 0.04 lerp.
+        robotGroup.position.y = -0.75 + floatY + leanY;
+
+        // A2. Idle micro-life: slow ambient body yaw + head glances so the
+        // robot never reads as frozen between turns. Damped (not zeroed) while
+        // a gesture/wave is held so held poses stay steady but still alive.
+        // Two incommensurate sine frequencies per axis keep the motion from
+        // reading as a metronome loop. Amplitudes are tiny on purpose (~3deg).
+        const alive = gestureTypeRef.current || isWavingRef.current ? 0.25 : 1;
+        // Celebration spin: one full 360deg yaw whose angle eases 2PI -> 0 over
+        // ~1.2s (ease-out cubic), ADDED into the single rotation.y write below
+        // rather than becoming a second writer. Pending-flag consumed exactly
+        // like pokePending; re-triggers while a spin is in flight are ignored.
+        if (celebrateSpinRef.current) {
+          celebrateSpinRef.current = false;
+          if (celebrateSpinStart < 0) {
+            celebrateSpinStart = time;
+            // Garnish: reuse A3's existing scale spring for a little pop.
+            // pokeStart (not pokePending) on purpose -- skips the poke's
+            // 'surprised' face flash, which would fight the celebrating mood.
+            pokeStart = time;
+          }
+        }
+        let celebrateSpin = 0;
+        if (celebrateSpinStart >= 0) {
+          const ct = (time - celebrateSpinStart) / 1.2;
+          if (ct >= 1) {
+            celebrateSpinStart = -1;
+          } else {
+            celebrateSpin = Math.PI * 2 * Math.pow(1 - ct, 3); // 2PI -> 0, ease-out cubic
+          }
+        }
+        robotGroup.rotation.y = Math.sin(time * 0.22) * 0.05 * alive + celebrateSpin;
+
+        // A3. Poke squash-and-stretch: damped cosine spring on robotGroup.SCALE
+        // only (quick squash, springy settle back over ~0.6s). Scale is used
+        // because it has no other writer -- rotation belongs to the A2 block
+        // above and arms/fingers to their state machine, so a poke can never
+        // fight a held gesture pose or the ambient yaw.
+        if (pokePending) {
+          pokePending = false;
+          pokeStart = time;
+          // Face/color react ONLY when no gesture is active or held -- an
+          // active gesture owns the expression and must not be overridden.
+          if (!gestureTypeRef.current && !isWavingRef.current) {
+            pokeFaceUntil = time + 1.0;
+          }
+        }
+        if (pokeStart >= 0) {
+          const pt = time - pokeStart;
+          if (pt >= 0.6) {
+            robotGroup.scale.set(robotBaseScale, robotBaseScale, robotBaseScale);
+            pokeStart = -1;
+          } else {
+            // 1 at impact, rings down toward 0 -- y squashes while x/z bulge
+            // in opposition so the bounce reads as preserved volume.
+            const wobble = Math.cos(pt * 18.0) * Math.exp(-pt * 7.0);
+            robotGroup.scale.set(
+              robotBaseScale * (1 + 0.06 * wobble),
+              robotBaseScale * (1 - 0.12 * wobble), // y ~0.88 of base at impact
+              robotBaseScale * (1 + 0.06 * wobble)
+            );
+          }
+        }
+        // Surprised-face window: expires on its own AND yields instantly if a
+        // gesture starts mid-flash (the gesture's expression wins, warning 2).
+        const pokeFace = time < pokeFaceUntil && !gestureTypeRef.current && !isWavingRef.current;
+
+        // A4. Cursor body-lean parallax: the whole body drifts slightly toward
+        // the pointer, reusing the head-tracking's mouseRef (no second
+        // mousemove listener). The slow 0.04 lerp reads as drifting attention,
+        // not cursor-following, and the same `alive` damping as A2 keeps held
+        // gesture poses calm. position.x has no other writer so A4 owns it
+        // (base is 0 -- robotGroup is never positioned off-center); position.y
+        // already belongs to the hover float in block A, so leanY is injected
+        // into that write above instead of writing y a second time here.
+        leanX += (mouseRef.current.x * 0.16 * alive - leanX) * 0.04;
+        leanY += (mouseRef.current.y * 0.06 * alive - leanY) * 0.04;
+        robotGroup.position.x = leanX;
 
         // B. Underglow ring pulsates in scale and opacity
         const glowScale = 1.0 + Math.sin(time * 3.0) * 0.06;
@@ -913,20 +1027,37 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         starPoints.position.y = Math.sin(time * 0.6) * 0.15; // smooth slow ambient floating
 
         // D. Smooth Head Idle tilting + Mouse-cursor Tracking
-        const targetHeadRotY = mouseRef.current.x * 0.45;
-        const targetHeadRotX = -mouseRef.current.y * 0.35;
+        // Ambient glance layered UNDER mouse tracking: with the cursor near
+        // center the head slowly looks around on its own; an actual mouse move
+        // still dominates since its gain (0.45) is ~3x the glance amplitude.
+        const idleGlanceY = (Math.sin(time * 0.32) * 0.14 + Math.sin(time * 0.83) * 0.05) * alive;
+        const idleGlanceX = Math.sin(time * 0.47) * 0.045 * alive;
+        const targetHeadRotY = mouseRef.current.x * 0.45 + idleGlanceY;
+        const targetHeadRotX = -mouseRef.current.y * 0.35 + idleGlanceX;
 
         // Smoothly interpolate (lerp) towards target mouse look
         headGroup.rotation.y += (targetHeadRotY - headGroup.rotation.y) * 0.08;
         headGroup.rotation.x += (targetHeadRotX - headGroup.rotation.x) * 0.08;
+
+        // Listening head-cock: subtle rotation.z tilt so the robot visibly
+        // cocks its head while the student types. Mouse tracking above only
+        // writes head rotation.x/y, so .z is unowned here; gated off (lerped
+        // smoothly back to 0) whenever a gesture/wave owns the pose or the
+        // state leaves 'listening'.
+        const listenTilt =
+          expressionRef.current === "listening" && !gestureTypeRef.current && !isWavingRef.current ? 0.08 : 0;
+        headGroup.rotation.z += (listenTilt - headGroup.rotation.z) * 0.08;
 
         // E. Arm and Finger animations
         const activeGest = gestureTypeRef.current;
         const activeArm = activeArmRef.current;
 
         // Smoothly interpolate glowMaterial & light colors to match current emotion color!
+        // A live poke rides the same pipeline via the 'surprised' palette (pink),
+        // so the flash needs no new material writer -- it lerps in and back out
+        // exactly like every other mood change.
         const curExp = expressionRef.current;
-        const colors = getEmotionColor(curExp, activeGest);
+        const colors = getEmotionColor(pokeFace ? "surprised" : curExp, activeGest);
         const targetColor = new THREE.Color(colors.primary);
         glowMaterial.color.lerp(targetColor, 0.08);
         fillLightLeft.color.lerp(targetColor, 0.08);
@@ -937,12 +1068,17 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         // color, not just its glow trim -- user explicitly wants "full yellow"
         // when thinking, not a grey robot with a yellow ring.
         glossyMaterial.color.lerp(targetColor, 0.05);
-        // accentMaterial (fingers/ears/shoulders/bezel) deliberately does NOT
-        // wash toward the mood color -- it stays its fixed metal tone so fine
-        // details like fingers keep contrast against the now-tinted palm/body.
-        // Tinting it too (tried earlier this session) made same-colored
-        // fingers visually merge into the palm/glow, reading as a jagged
-        // blob instead of distinct fingers -- caught from a user screenshot.
+        // Fingers/ears/shoulders/bezel (accentMaterial) wash toward a LIGHTER
+        // TINT of the mood, not the exact body color. The pose is identical at
+        // every color, so "fingers wrong WHEN PINK" is a contrast problem, not a
+        // shape one: the old fixed-dark accent (0x4a5157) read as a foreign dark
+        // claw against a vivid pink/green body. Same-hue-but-lighter keeps them
+        // in the body's color family (no dark claw) while staying brighter than
+        // the mid-tone palm, so they still read as distinct fingers instead of
+        // merging into it -- the merge/blob was why a full same-color wash was
+        // reverted before; a lightened tint avoids both failure modes.
+        const accentTint = targetColor.clone().lerp(WHITE, 0.45);
+        accentMaterial.color.lerp(accentTint, 0.06);
 
         // Query hand structures for finger rotations
         const leftHand = leftArmGroup.getObjectByName("hand");
@@ -976,12 +1112,21 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         // --- Right Arm State Machine (Projected forward +Z, facing user) ---
         if (activeArm === "right" && isWavingRef.current) {
           waveTimeRef.current += 16;
-          // Wave right arm: high, wide, pointing outwards and upwards (+X, +Y direction) with stable shoulder anchor
+          // Wave right arm: arm held high/steady, the WAVE happens at the wrist.
+          // Driving the sweep at one joint (the hand) and keeping the arm's own
+          // follow tiny + SAME sign means arm, hand and fingers all rock one way
+          // together -- they can't scissor. The old code swept the arm one way
+          // (+sweep) while the hand counter-rotated the other (-sweep*1.5), and
+          // the fingers a third way, so the hand and fingertips waved on visibly
+          // different beats: the recurring "fingertip and hand not aligned".
+          // Frequency dropped 11->7.5: at the 0.26 lerp rate 11 rad/s was so
+          // attenuated the arm barely moved. Fingers are now a fixed open pose
+          // (see the wave finger block below) parented to the hand, so the wrist
+          // carries them as one rigid unit -- alignment is guaranteed by the rig.
+          const waveSweep = Math.sin(time * 7.5) * 0.45;
           targetR_ArmPos = { x: 1.1, y: -0.40, z: 0.0 };
-          const sweep = Math.sin(time * 11.0) * 0.22;
-          targetR_ArmRot = { x: -0.4, y: -0.3, z: 1.95 + sweep }; // Corrected positive Z for outward waving
-          // Dual-jointed wrist drag: overlapping action creates highly realistic wave
-          targetR_HandRot = { x: 0.1, y: -0.2, z: -0.8 - sweep * 1.5 }; 
+          targetR_ArmRot = { x: -0.4, y: -0.3, z: 1.9 + waveSweep * 0.15 };
+          targetR_HandRot = { x: 0.1, y: -0.2, z: -0.55 + waveSweep };
         } else if (activeArm === "right" && activeGest === "thumbsup") {
           // Thumbs up right arm: reuses wave's proven-visible raised-and-out angle
           // (z:+1.75, not the old negative z) so the arm reads clearly beside the
@@ -1029,12 +1174,12 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         // --- Left Arm State Machine (Projected forward +Z, facing user) ---
         if (activeArm === "left" && isWavingRef.current) {
           waveTimeRef.current += 16;
-          // Wave left arm: high, wide, pointing outwards and upwards (-X, +Y direction) with shoulder joint perfectly anchored
+          // True mirror of the right-arm wrist-wave above (negated y/z): arm
+          // steady, wave at the wrist, fingers a fixed open pose carried rigidly.
+          const waveSweep = Math.sin(time * 7.5) * 0.45;
           targetL_ArmPos = { x: -1.1, y: -0.40, z: 0.0 };
-          const sweep = Math.sin(time * 11.0) * 0.22;
-          targetL_ArmRot = { x: -0.4, y: 0.3, z: -1.95 - sweep }; // Corrected negative Z for outward waving
-          // Dual-jointed wrist drag: overlapping action creates highly realistic wave
-          targetL_HandRot = { x: 0.1, y: 0.2, z: 0.8 + sweep * 1.5 };
+          targetL_ArmRot = { x: -0.4, y: 0.3, z: -1.9 - waveSweep * 0.15 };
+          targetL_HandRot = { x: 0.1, y: 0.2, z: 0.55 - waveSweep };
         } else if (activeArm === "left" && activeGest === "thumbsup") {
           // True mirror of the right-arm wave-derived angle above (left wave uses
           // negative z where right wave uses positive z -- same sign flip here).
@@ -1191,40 +1336,38 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
               rFingerRightTip.rotation.z = THREE.MathUtils.lerp(rFingerRightTip.rotation.z, -0.25 - graspPulse * 0.8, 0.28);
             }
           } else if (isRightActive && isWavingRef.current) {
-            // Fingers swing IN PHASE with the arm's own side-to-side sweep (same
-            // Math.sin(time*11.0) term the arm uses, no independent lag/offset) so
-            // the open hand reads as one coordinated wave instead of the arm and
-            // fingers looking like they're moving on their own separate beats.
-            const armSweep = Math.sin(time * 11.0) * 0.22;
-            const handSway = armSweep * 1.6; // fingers lead a bit wider than the arm, like a real open-palm wave
-            const curlBase = 0.05; // relaxed, mostly-open hand -- not curled/clawed
-            const curlTip = 0.03;
-
-            rFingerLeft.rotation.x = THREE.MathUtils.lerp(rFingerLeft.rotation.x, curlBase, 0.3);
-            rFingerLeft.rotation.y = THREE.MathUtils.lerp(rFingerLeft.rotation.y, 0, 0.3);
-            rFingerLeft.rotation.z = THREE.MathUtils.lerp(rFingerLeft.rotation.z, 0.3 + handSway, 0.3);
+            // Wave fingers: a FIXED, relaxed open splay -- NO per-frame sine.
+            // The fingers are children of the hand, and the hand is what rocks
+            // (see the wrist-wave arm block above), so they inherit the wave as
+            // one rigid unit -- the fingertips physically cannot drift out of
+            // sync with the palm. Every prior attempt animated the fingers on
+            // their own sine and fought the wrist; a static pose removes the
+            // whole desync class instead of trying to phase-match it.
+            rFingerLeft.rotation.x = THREE.MathUtils.lerp(rFingerLeft.rotation.x, 0.05, 0.28);
+            rFingerLeft.rotation.y = THREE.MathUtils.lerp(rFingerLeft.rotation.y, 0, 0.28);
+            rFingerLeft.rotation.z = THREE.MathUtils.lerp(rFingerLeft.rotation.z, 0.32, 0.28);
             if (rFingerLeftTip) {
-              rFingerLeftTip.rotation.x = THREE.MathUtils.lerp(rFingerLeftTip.rotation.x, curlTip, 0.3);
-              rFingerLeftTip.rotation.y = THREE.MathUtils.lerp(rFingerLeftTip.rotation.y, 0, 0.3);
-              rFingerLeftTip.rotation.z = THREE.MathUtils.lerp(rFingerLeftTip.rotation.z, 0.15 + handSway * 0.8, 0.3);
+              rFingerLeftTip.rotation.x = THREE.MathUtils.lerp(rFingerLeftTip.rotation.x, 0.04, 0.28);
+              rFingerLeftTip.rotation.y = THREE.MathUtils.lerp(rFingerLeftTip.rotation.y, 0, 0.28);
+              rFingerLeftTip.rotation.z = THREE.MathUtils.lerp(rFingerLeftTip.rotation.z, 0.16, 0.28);
             }
 
-            rFingerRight.rotation.x = THREE.MathUtils.lerp(rFingerRight.rotation.x, curlBase, 0.3);
-            rFingerRight.rotation.y = THREE.MathUtils.lerp(rFingerRight.rotation.y, 0, 0.3);
-            rFingerRight.rotation.z = THREE.MathUtils.lerp(rFingerRight.rotation.z, -0.3 + handSway, 0.3);
+            rFingerRight.rotation.x = THREE.MathUtils.lerp(rFingerRight.rotation.x, 0.05, 0.28);
+            rFingerRight.rotation.y = THREE.MathUtils.lerp(rFingerRight.rotation.y, 0, 0.28);
+            rFingerRight.rotation.z = THREE.MathUtils.lerp(rFingerRight.rotation.z, -0.32, 0.28);
             if (rFingerRightTip) {
-              rFingerRightTip.rotation.x = THREE.MathUtils.lerp(rFingerRightTip.rotation.x, curlTip, 0.3);
-              rFingerRightTip.rotation.y = THREE.MathUtils.lerp(rFingerRightTip.rotation.y, 0, 0.3);
-              rFingerRightTip.rotation.z = THREE.MathUtils.lerp(rFingerRightTip.rotation.z, -0.15 + handSway * 0.8, 0.3);
+              rFingerRightTip.rotation.x = THREE.MathUtils.lerp(rFingerRightTip.rotation.x, 0.04, 0.28);
+              rFingerRightTip.rotation.y = THREE.MathUtils.lerp(rFingerRightTip.rotation.y, 0, 0.28);
+              rFingerRightTip.rotation.z = THREE.MathUtils.lerp(rFingerRightTip.rotation.z, -0.16, 0.28);
             }
 
-            rFingerThumb.rotation.x = THREE.MathUtils.lerp(rFingerThumb.rotation.x, -0.1, 0.3);
-            rFingerThumb.rotation.y = THREE.MathUtils.lerp(rFingerThumb.rotation.y, 0, 0.3);
-            rFingerThumb.rotation.z = THREE.MathUtils.lerp(rFingerThumb.rotation.z, handSway * 0.6, 0.3);
+            rFingerThumb.rotation.x = THREE.MathUtils.lerp(rFingerThumb.rotation.x, -0.1, 0.28);
+            rFingerThumb.rotation.y = THREE.MathUtils.lerp(rFingerThumb.rotation.y, 0, 0.28);
+            rFingerThumb.rotation.z = THREE.MathUtils.lerp(rFingerThumb.rotation.z, 0.05, 0.28);
             if (rFingerThumbTip) {
-              rFingerThumbTip.rotation.x = THREE.MathUtils.lerp(rFingerThumbTip.rotation.x, -0.1, 0.3);
-              rFingerThumbTip.rotation.y = THREE.MathUtils.lerp(rFingerThumbTip.rotation.y, 0, 0.3);
-              rFingerThumbTip.rotation.z = THREE.MathUtils.lerp(rFingerThumbTip.rotation.z, handSway * 0.5, 0.3);
+              rFingerThumbTip.rotation.x = THREE.MathUtils.lerp(rFingerThumbTip.rotation.x, -0.1, 0.28);
+              rFingerThumbTip.rotation.y = THREE.MathUtils.lerp(rFingerThumbTip.rotation.y, 0, 0.28);
+              rFingerThumbTip.rotation.z = THREE.MathUtils.lerp(rFingerThumbTip.rotation.z, 0, 0.28);
             }
           } else if (isRightActive && activeGest === "stop") {
             // Flat, statically spread stop hand
@@ -1368,40 +1511,33 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
               lFingerRightTip.rotation.z = THREE.MathUtils.lerp(lFingerRightTip.rotation.z, -0.25 - graspPulse * 0.8, 0.28);
             }
           } else if (isLeftActive && isWavingRef.current) {
-            // Mirror of the right-hand in-phase wave sway above. Same phase as
-            // the left arm's own `sweep` term (no offset) -- the left arm's
-            // rotation target doesn't phase-shift `time` either, so this has to
-            // match exactly or the hand and fingers drift out of sync again.
-            const armSweep = Math.sin(time * 11.0) * 0.22;
-            const handSway = armSweep * 1.6;
-            const curlBase = 0.05;
-            const curlTip = 0.03;
-
-            lFingerLeft.rotation.x = THREE.MathUtils.lerp(lFingerLeft.rotation.x, curlBase, 0.3);
-            lFingerLeft.rotation.y = THREE.MathUtils.lerp(lFingerLeft.rotation.y, 0, 0.3);
-            lFingerLeft.rotation.z = THREE.MathUtils.lerp(lFingerLeft.rotation.z, 0.3 + handSway, 0.3);
+            // Fixed open splay, mirror of the right-hand wave block -- no sine.
+            // Parented to the hand that rocks, so they wave as one rigid unit.
+            lFingerLeft.rotation.x = THREE.MathUtils.lerp(lFingerLeft.rotation.x, 0.05, 0.28);
+            lFingerLeft.rotation.y = THREE.MathUtils.lerp(lFingerLeft.rotation.y, 0, 0.28);
+            lFingerLeft.rotation.z = THREE.MathUtils.lerp(lFingerLeft.rotation.z, 0.32, 0.28);
             if (lFingerLeftTip) {
-              lFingerLeftTip.rotation.x = THREE.MathUtils.lerp(lFingerLeftTip.rotation.x, curlTip, 0.3);
-              lFingerLeftTip.rotation.y = THREE.MathUtils.lerp(lFingerLeftTip.rotation.y, 0, 0.3);
-              lFingerLeftTip.rotation.z = THREE.MathUtils.lerp(lFingerLeftTip.rotation.z, 0.15 + handSway * 0.8, 0.3);
+              lFingerLeftTip.rotation.x = THREE.MathUtils.lerp(lFingerLeftTip.rotation.x, 0.04, 0.28);
+              lFingerLeftTip.rotation.y = THREE.MathUtils.lerp(lFingerLeftTip.rotation.y, 0, 0.28);
+              lFingerLeftTip.rotation.z = THREE.MathUtils.lerp(lFingerLeftTip.rotation.z, 0.16, 0.28);
             }
 
-            lFingerRight.rotation.x = THREE.MathUtils.lerp(lFingerRight.rotation.x, curlBase, 0.3);
-            lFingerRight.rotation.y = THREE.MathUtils.lerp(lFingerRight.rotation.y, 0, 0.3);
-            lFingerRight.rotation.z = THREE.MathUtils.lerp(lFingerRight.rotation.z, -0.3 + handSway, 0.3);
+            lFingerRight.rotation.x = THREE.MathUtils.lerp(lFingerRight.rotation.x, 0.05, 0.28);
+            lFingerRight.rotation.y = THREE.MathUtils.lerp(lFingerRight.rotation.y, 0, 0.28);
+            lFingerRight.rotation.z = THREE.MathUtils.lerp(lFingerRight.rotation.z, -0.32, 0.28);
             if (lFingerRightTip) {
-              lFingerRightTip.rotation.x = THREE.MathUtils.lerp(lFingerRightTip.rotation.x, curlTip, 0.3);
-              lFingerRightTip.rotation.y = THREE.MathUtils.lerp(lFingerRightTip.rotation.y, 0, 0.3);
-              lFingerRightTip.rotation.z = THREE.MathUtils.lerp(lFingerRightTip.rotation.z, -0.15 + handSway * 0.8, 0.3);
+              lFingerRightTip.rotation.x = THREE.MathUtils.lerp(lFingerRightTip.rotation.x, 0.04, 0.28);
+              lFingerRightTip.rotation.y = THREE.MathUtils.lerp(lFingerRightTip.rotation.y, 0, 0.28);
+              lFingerRightTip.rotation.z = THREE.MathUtils.lerp(lFingerRightTip.rotation.z, -0.16, 0.28);
             }
 
-            lFingerThumb.rotation.x = THREE.MathUtils.lerp(lFingerThumb.rotation.x, -0.1, 0.3);
-            lFingerThumb.rotation.y = THREE.MathUtils.lerp(lFingerThumb.rotation.y, 0, 0.3);
-            lFingerThumb.rotation.z = THREE.MathUtils.lerp(lFingerThumb.rotation.z, handSway * 0.6, 0.3);
+            lFingerThumb.rotation.x = THREE.MathUtils.lerp(lFingerThumb.rotation.x, -0.1, 0.28);
+            lFingerThumb.rotation.y = THREE.MathUtils.lerp(lFingerThumb.rotation.y, 0, 0.28);
+            lFingerThumb.rotation.z = THREE.MathUtils.lerp(lFingerThumb.rotation.z, 0.05, 0.28);
             if (lFingerThumbTip) {
-              lFingerThumbTip.rotation.x = THREE.MathUtils.lerp(lFingerThumbTip.rotation.x, -0.1, 0.3);
-              lFingerThumbTip.rotation.y = THREE.MathUtils.lerp(lFingerThumbTip.rotation.y, 0, 0.3);
-              lFingerThumbTip.rotation.z = THREE.MathUtils.lerp(lFingerThumbTip.rotation.z, handSway * 0.5, 0.3);
+              lFingerThumbTip.rotation.x = THREE.MathUtils.lerp(lFingerThumbTip.rotation.x, -0.1, 0.28);
+              lFingerThumbTip.rotation.y = THREE.MathUtils.lerp(lFingerThumbTip.rotation.y, 0, 0.28);
+              lFingerThumbTip.rotation.z = THREE.MathUtils.lerp(lFingerThumbTip.rotation.z, 0, 0.28);
             }
           } else if (isLeftActive && activeGest === "stop") {
             // Flat, statically spread stop hand
@@ -1479,13 +1615,36 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
         }
 
         // G. Update face canvas drawing
-        updateFaceCanvas(time, blinkFactor);
+        updateFaceCanvas(time, blinkFactor, pokeFace);
 
         // H. Render
         renderer.render(scene, camera);
       };
 
       animate();
+
+      // 8.5 Poke interaction: pointerdown on the canvas raycasts into the robot;
+      // a hit queues a poke for animate() (squash bounce + surprised flash).
+      // Listener is additive only -- no preventDefault, so the window-level
+      // mousemove head tracking above keeps working untouched.
+      const pokeRaycaster = new THREE.Raycaster();
+      const pokeNdc = new THREE.Vector2();
+      const handlePokePointerDown = (e: PointerEvent) => {
+        if (performance.now() - lastPokeMs < 700) return; // cooldown between pokes
+        const rect = renderer.domElement.getBoundingClientRect();
+        pokeNdc.set(
+          ((e.clientX - rect.left) / rect.width) * 2 - 1,
+          -((e.clientY - rect.top) / rect.height) * 2 + 1
+        );
+        pokeRaycaster.setFromCamera(pokeNdc, camera);
+        // Only the robot itself counts as a poke, not empty canvas space.
+        if (pokeRaycaster.intersectObjects(robotGroup.children, true).length === 0) return;
+        lastPokeMs = performance.now();
+        pokePending = true;
+      };
+      renderer.domElement.addEventListener("pointerdown", handlePokePointerDown);
+      // Static pointer cursor -- per-frame hover raycasting isn't worth the cost.
+      renderer.domElement.style.cursor = "pointer";
 
       // 9. Resize Container Handler
       const resizeObserver = new ResizeObserver((entries) => {
@@ -1522,6 +1681,7 @@ export const RobotViewer = forwardRef<RobotViewerRef, RobotViewerProps>(
       return () => {
         cancelAnimationFrame(animationFrameId);
         resizeObserver.disconnect();
+        renderer.domElement.removeEventListener("pointerdown", handlePokePointerDown);
         container.removeChild(renderer.domElement);
         renderer.dispose();
         faceTexture.dispose();

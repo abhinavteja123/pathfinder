@@ -18,14 +18,23 @@ const STAGES: { year: Year; name: string; blurb: string }[] = [
   { year: 4, name: 'Launch', blurb: 'Placements, offers, higher studies.' },
 ];
 
+const BRANCHES = ['CSE', 'ECE', 'Civil', 'EEE', 'Mechanical'] as const;
+type Branch = (typeof BRANCHES)[number];
+
 export default function Home() {
   const [program, setProgram] = useState<Program>('BTech');
+  const [branch, setBranch] = useState<Branch>('CSE');
 
   const launch = (year: Year, fresh: boolean) => {
     // Fresh id (Date.now suffix) always hits the catch-up/intro entry node;
     // stable id lets a second visit hit the "continue" entry node.
     const studentId = fresh ? `demo-y${year}-${program}-${Date.now()}` : `demo-y${year}-${program}`;
-    window.location.href = `/demo?year=${year}&program=${program}&studentId=${studentId}`;
+    // Branch rides along as the login-fetched "student details" (flow chart)
+    // -- BTech only; BBA has no engineering branch.
+    const branchParam = program === 'BTech' ? `&branch=${branch}` : '';
+    // fresh=1 lets /demo start the cyber intro immediately (it doubles as the
+    // loader) instead of waiting for the status fetch to prove first-time.
+    window.location.href = `/demo?year=${year}&program=${program}&studentId=${studentId}${branchParam}${fresh ? '&fresh=1' : ''}`;
   };
 
   return (
@@ -90,6 +99,35 @@ export default function Home() {
             );
           })}
         </div>
+
+        {/* branch segmented toggle -- the "student details" (CSE/ECE/...) the
+            bot fetches at login; BTech only, BBA has no engineering branch */}
+        {program === 'BTech' && (
+          <div
+            className="animate-rise mt-3 inline-flex flex-wrap gap-1 rounded-full p-1 glass"
+            style={{ animationDelay: '90ms' }}
+            role="group"
+            aria-label="Branch"
+          >
+            {BRANCHES.map((b) => {
+              const active = branch === b;
+              return (
+                <button
+                  key={b}
+                  onClick={() => setBranch(b)}
+                  aria-pressed={active}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ${
+                    active
+                      ? 'bg-gradient-to-br from-[var(--violet)] to-[var(--violet-deep)] text-white shadow-[0_0_18px_rgba(124,92,255,0.5)]'
+                      : 'text-[var(--ink-dim)] hover:text-[var(--ink)]'
+                  }`}
+                >
+                  {b}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* persona cards */}
         <div className="mt-6 grid gap-4 sm:grid-cols-2">

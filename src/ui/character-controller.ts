@@ -12,6 +12,10 @@ export interface CharacterController {
    * `celebrate` forces the happy/thumbsup reaction (stage-complete moments)
    * instead of leaving mood detection to guess from the text. `gesture`/`arm`
    * are authored per-node (deterministic, same node -> same gesture every time);
-   * when omitted, the renderer falls back to keyword mood-detection on `text`. */
-  speak?(text: string, opts?: { celebrate?: boolean; gesture?: Gesture; arm?: Arm }): void;
+   * when omitted, the renderer falls back to keyword mood-detection on `text`.
+   * `hold` keeps the pose + speaking face up until the NEXT speak() (or explicit
+   * stop) instead of releasing when TTS ends -- for beats whose on-screen life
+   * the caller owns (explainer slides dismissed by a button, the intro wave that
+   * stays until the student answers), not the length of the spoken line. */
+  speak?(text: string, opts?: { celebrate?: boolean; gesture?: Gesture; arm?: Arm; hold?: boolean }): void;
 }

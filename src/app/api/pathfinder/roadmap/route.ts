@@ -46,17 +46,27 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ items });
 }
 
-/** Toggle one item's status (e.g. save/unsave). */
+/** Toggle one item's status (e.g. save/unsave, check off done). Accepts either
+ * {status} directly or {done: boolean} as sugar for it. */
 export async function POST(request: NextRequest) {
-  const body = (await request.json()) as { studentId?: string; itemId?: string; status?: string };
-  if (!body.studentId || !body.itemId || !body.status) {
-    return NextResponse.json({ error: 'studentId, itemId, status are required' }, { status: 400 });
+  const body = (await request.json()) as {
+    studentId?: string;
+    itemId?: string;
+    status?: string;
+    done?: boolean;
+  };
+  // ponytail: un-done resets to 'suggested' -- check-off targets step-/sprint-
+  // sub-steps, which never hold 'saved'/'started'; track prior status if that changes.
+  const status =
+    body.status ?? (typeof body.done === 'boolean' ? (body.done ? 'done' : 'suggested') : undefined);
+  if (!body.studentId || !body.itemId || !status) {
+    return NextResponse.json({ error: 'studentId, itemId, status (or done) are required' }, { status: 400 });
   }
-  if (!VALID_STATUS.includes(body.status as RoadmapStatus)) {
+  if (!VALID_STATUS.includes(status as RoadmapStatus)) {
     return NextResponse.json({ error: 'invalid status' }, { status: 400 });
   }
 
   const repo = getRepository();
-  await repo.setRoadmapItemStatus(body.studentId, body.itemId, body.status as RoadmapStatus);
+  await repo.setRoadmapItemStatus(body.studentId, body.itemId, status as RoadmapStatus);
   return NextResponse.json({ ok: true });
 }

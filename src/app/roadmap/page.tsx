@@ -108,19 +108,19 @@ export default function RoadmapPage() {
             <div>
               <p className="mb-2 font-display text-sm font-semibold text-[var(--ink)]">Your journey</p>
               <div className="glass animate-rise h-[52vh] min-h-[340px] overflow-hidden rounded-3xl">
-                <RoadmapFlow items={milestoneItems} onToggleSave={toggleSave} />
+                <RoadmapFlow items={milestoneItems} onToggleSave={toggleSave} studentId={studentId} />
               </div>
             </div>
             <div>
               <p className="mb-2 font-display text-sm font-semibold text-[var(--ink)]">Your specialization roadmap</p>
               <div className="glass animate-rise h-[52vh] min-h-[340px] overflow-hidden rounded-3xl">
-                <RoadmapFlow items={domainItems} onToggleSave={toggleSave} />
+                <RoadmapFlow items={domainItems} onToggleSave={toggleSave} studentId={studentId} />
               </div>
             </div>
           </div>
         ) : (
           <div className="glass animate-rise h-[60vh] min-h-[380px] overflow-hidden rounded-3xl">
-            <RoadmapFlow items={items} onToggleSave={toggleSave} />
+            <RoadmapFlow items={items} onToggleSave={toggleSave} studentId={studentId} />
           </div>
         )}
 
