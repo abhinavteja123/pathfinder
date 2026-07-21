@@ -23,9 +23,24 @@ export async function GET(request: NextRequest) {
   }
 
   let items = await repo.getRoadmapItems(studentId);
-  if (items.length === 0) {
-    const answerRows = await repo.getProfileAnswers(studentId);
-    const answers = Object.fromEntries(answerRows.map((a) => [a.key, a.value]));
+  const answerRows = await repo.getProfileAnswers(studentId);
+  const answers = Object.fromEntries(answerRows.map((a) => [a.key, a.value]));
+
+  // Domain-shift path (R3): the roadmap is generate-once, but when the student
+  // re-picks their domain (discover_domain_repick), the stored `domain-*` items
+  // no longer match the current answer. Regenerate the whole set, carrying every
+  // surviving itemId's status over (done/saved steps stay done/saved); changed
+  // domain items start fresh as 'suggested'.
+  const domainShifted = (() => {
+    if (items.length === 0 || !answers.domain) return false;
+    const fresh = generateRoadmap({ year: student.year, program: student.program, answers });
+    const freshDomainIds = new Set(fresh.filter((s) => s.itemId.startsWith('domain-')).map((s) => s.itemId));
+    const storedDomainIds = new Set(items.filter((i) => i.itemId.startsWith('domain-')).map((i) => i.itemId));
+    return freshDomainIds.size !== storedDomainIds.size || [...freshDomainIds].some((id) => !storedDomainIds.has(id));
+  })();
+
+  if (items.length === 0 || domainShifted) {
+    const prevStatus = new Map(items.map((i) => [i.itemId, i.status]));
     const now = new Date().toISOString();
     items = generateRoadmap({ year: student.year, program: student.program, answers }).map(
       (spec): RoadmapItemRecord => ({
@@ -36,7 +51,7 @@ export async function GET(request: NextRequest) {
         description: spec.description,
         link: spec.link,
         order: spec.order,
-        status: 'suggested',
+        status: prevStatus.get(spec.itemId) ?? 'suggested',
         createdAt: now,
       })
     );

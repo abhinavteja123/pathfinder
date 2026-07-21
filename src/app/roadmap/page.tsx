@@ -124,8 +124,33 @@ export default function RoadmapPage() {
           </div>
         )}
 
-        {/* Explore showcase -- the "other modules" the bot points at */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {/* Explore showcase -- the "other modules" the bot points at, plus the
+            certification lane the branch-toned conversation keeps stressing */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="glass rounded-2xl p-4">
+            <p className="mb-2 font-display text-sm font-semibold text-[var(--ink)]">Certifications</p>
+            <ul className="flex flex-col gap-1.5">
+              {(() => {
+                const certs = items
+                  .filter((it) => /cert|NPTEL|CSWA|AutoCAD|Onramp|GATE/i.test(`${it.title} ${it.description}`))
+                  .slice(0, 4);
+                if (certs.length === 0)
+                  return <li className="text-xs text-[var(--ink-dim)]">Your track has no cert items yet.</li>;
+                return certs.map((it) => (
+                  <li key={it.itemId} className="text-xs">
+                    {it.link ? (
+                      <a href={it.link} target="_blank" rel="noreferrer" className="text-[var(--cyan)] hover:underline">
+                        {it.title}
+                        {it.status === 'done' && <span className="ml-1 text-[var(--ink-dim)]">· done</span>}
+                      </a>
+                    ) : (
+                      <span className="text-[var(--ink)]">{it.title}</span>
+                    )}
+                  </li>
+                ));
+              })()}
+            </ul>
+          </div>
           {SHOWCASE.map(({ category, label }) => {
             const list = byCategory.get(category) ?? [];
             return (

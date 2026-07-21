@@ -1,0 +1,284 @@
+[
+  {
+    "id": "convert_intro",
+    "say": "Pathfinder here -- and it's year 3 already, the conversion year. First time we're talking, so let's move fast and focused. This is where skills turn into offers.",
+    "sayByAnswer": {
+      "key": "branch",
+      "fallback": "Pathfinder here -- and it's year 3 already, the conversion year. First time we're talking, so let's move fast and focused. This is where skills turn into offers.",
+      "map": {
+        "CSE": "Pathfinder here -- year 3 CSE, the conversion year. Internships, DSA, referrals: this is where it all turns into offers. Let's map your play.",
+        "ECE": "Pathfinder here -- year 3 ECE. Core internship, IT offer, or GATE prep -- big forks this year. Let's figure out your lane and get you hire-ready.",
+        "EEE": "Pathfinder here -- year 3 EEE. Core, PSU/GATE, or software -- this is decision year. Let's map the fastest route to your offer.",
+        "Civil": "Pathfinder here -- year 3 Civil. Site internship, GATE/PSU, or a design office -- let's pick your lane and get you placement-ready.",
+        "Mechanical": "Pathfinder here -- year 3 Mechanical. Core internship, GATE lane, or design roles -- let's aim your prep where it converts."
+      }
+    },
+    "options": [{ "label": "Let's go", "next": "convert_goal" }],
+    "gesture": "wave",
+    "arm": "right"
+  },
+  {
+    "id": "convert_goal",
+    "say": "First, the big picture -- what are you gunning for this year? Dream role, target company, or the kind of offer you want in hand.",
+    "captureAs": "goal",
+    "next": "convert_track"
+  },
+  {
+    "id": "convert_track",
+    "say": "Time to get specific -- which field are you doubling down on to make yourself hire-ready this year?",
+    "options": [
+      { "label": "AI/ML", "next": "convert_ppo_check" },
+      { "label": "Cybersecurity", "next": "convert_ppo_check" },
+      { "label": "IoT", "next": "convert_ppo_check" },
+      { "label": "Web Dev", "next": "convert_ppo_check" },
+      { "label": "Cloud/DevOps", "next": "convert_ppo_check" },
+      { "label": "Mobile Dev", "next": "convert_ppo_check" },
+      { "label": "Blockchain", "next": "convert_ppo_check" },
+      { "label": "Data Science", "next": "convert_ppo_check" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "Marketing", "next": "convert_ppo_check" },
+        { "label": "Finance", "next": "convert_ppo_check" },
+        { "label": "HR", "next": "convert_ppo_check" },
+        { "label": "Operations", "next": "convert_ppo_check" },
+        { "label": "Business Analytics", "next": "convert_ppo_check" }
+      ]
+    },
+    "optionsByBranch": {
+      "ECE": [
+        { "label": "VLSI Design", "next": "convert_ppo_check" },
+        { "label": "Embedded Systems", "next": "convert_ppo_check" },
+        { "label": "IoT", "next": "convert_ppo_check" },
+        { "label": "Signal Processing", "next": "convert_ppo_check" }
+      ],
+      "EEE": [
+        { "label": "Power Systems", "next": "convert_ppo_check" },
+        { "label": "Control Systems", "next": "convert_ppo_check" },
+        { "label": "Embedded Systems", "next": "convert_ppo_check" },
+        { "label": "IoT", "next": "convert_ppo_check" }
+      ],
+      "Civil": [
+        { "label": "Structural Design", "next": "convert_ppo_check" },
+        { "label": "Construction Management", "next": "convert_ppo_check" },
+        { "label": "GIS & Surveying", "next": "convert_ppo_check" }
+      ],
+      "Mechanical": [
+        { "label": "CAD & Design", "next": "convert_ppo_check" },
+        { "label": "Robotics", "next": "convert_ppo_check" },
+        { "label": "Thermal & Energy", "next": "convert_ppo_check" },
+        { "label": "Manufacturing & 3D Printing", "next": "convert_ppo_check" }
+      ]
+    },
+    "captureAs": "domain"
+  },
+  {
+    "id": "convert_ppo_check",
+    "say": "Give me specifics -- any offer talks in progress, or hackathons/case comps you're using to strengthen your case?",
+    "captureAs": "conversion_plan",
+    "next": "convert_skillgap_grid"
+  },
+  {
+    "id": "convert_skillgap_grid",
+    "multi": true,
+    "say": "Let's map the gap -- which of these hire-ready skills do you already have? Tick only what's genuinely there.",
+    "options": [
+      { "label": "DSA in one language", "next": "convert_readiness_rate" },
+      { "label": "Git + code review flow", "next": "convert_readiness_rate" },
+      { "label": "One deployed project", "next": "convert_readiness_rate" },
+      { "label": "SQL + databases", "next": "convert_readiness_rate" },
+      { "label": "System design basics", "next": "convert_readiness_rate" },
+      { "label": "Aptitude practice", "next": "convert_readiness_rate" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "Advanced Excel", "next": "convert_readiness_rate" },
+        { "label": "Case-solving frameworks", "next": "convert_readiness_rate" },
+        { "label": "A live market/finance project", "next": "convert_readiness_rate" },
+        { "label": "SQL or analytics tool", "next": "convert_readiness_rate" },
+        { "label": "Group-discussion practice", "next": "convert_readiness_rate" }
+      ]
+    },
+    "optionsByBranch": {
+      "ECE": [
+        { "label": "Verilog/HDL", "next": "convert_readiness_rate" },
+        { "label": "Embedded C", "next": "convert_readiness_rate" },
+        { "label": "A working hardware project", "next": "convert_readiness_rate" },
+        { "label": "PCB design", "next": "convert_readiness_rate" },
+        { "label": "Core fundamentals (GATE-level)", "next": "convert_readiness_rate" },
+        { "label": "Aptitude practice", "next": "convert_readiness_rate" }
+      ],
+      "EEE": [
+        { "label": "MATLAB/Simulink", "next": "convert_readiness_rate" },
+        { "label": "PLC/automation", "next": "convert_readiness_rate" },
+        { "label": "A power/control project", "next": "convert_readiness_rate" },
+        { "label": "Circuit design", "next": "convert_readiness_rate" },
+        { "label": "Core fundamentals (GATE-level)", "next": "convert_readiness_rate" },
+        { "label": "Aptitude practice", "next": "convert_readiness_rate" }
+      ],
+      "Civil": [
+        { "label": "AutoCAD", "next": "convert_readiness_rate" },
+        { "label": "STAAD Pro", "next": "convert_readiness_rate" },
+        { "label": "Site/estimation exposure", "next": "convert_readiness_rate" },
+        { "label": "Surveying", "next": "convert_readiness_rate" },
+        { "label": "Core fundamentals (GATE-level)", "next": "convert_readiness_rate" },
+        { "label": "Aptitude practice", "next": "convert_readiness_rate" }
+      ],
+      "Mechanical": [
+        { "label": "SolidWorks/CAD", "next": "convert_readiness_rate" },
+        { "label": "Ansys/simulation", "next": "convert_readiness_rate" },
+        { "label": "A fabricated project", "next": "convert_readiness_rate" },
+        { "label": "GD&T", "next": "convert_readiness_rate" },
+        { "label": "Core fundamentals (GATE-level)", "next": "convert_readiness_rate" },
+        { "label": "Aptitude practice", "next": "convert_readiness_rate" }
+      ]
+    },
+    "captureAs": "skillgap",
+    "next": "convert_readiness_rate"
+  },
+  {
+    "id": "convert_readiness_rate",
+    "say": "Gut check on problem-solving prep -- if an interviewer grilled you tomorrow, how would it go?",
+    "options": [
+      { "label": "strong", "next": "convert_resume_status" },
+      { "label": "okay", "next": "convert_resume_status" },
+      { "label": "weak", "next": "convert_resume_status" }
+    ],
+    "captureAs": "readiness_dsa"
+  },
+  {
+    "id": "convert_resume_status",
+    "say": "And the resume -- be honest, where does it stand right now?",
+    "options": [
+      { "label": "recruiter-ready", "next": "convert_referral_net" },
+      { "label": "drafted", "next": "convert_referral_net" },
+      { "label": "doesn't exist", "next": "convert_referral_net" }
+    ],
+    "captureAs": "resume_status"
+  },
+  {
+    "id": "convert_referral_net",
+    "say": "Referrals quietly decide a lot of offers -- do you have people who could put your name forward?",
+    "options": [
+      { "label": "alumni contacts", "next": "convert_target_type" },
+      { "label": "a few", "next": "convert_target_type" },
+      { "label": "none yet", "next": "convert_target_type" }
+    ],
+    "captureAs": "referral_status"
+  },
+  {
+    "id": "convert_target_type",
+    "say": "What kind of place are you actually aiming for?",
+    "options": [
+      { "label": "product cos", "next": "convert_time_budget" },
+      { "label": "startups", "next": "convert_time_budget" },
+      { "label": "core", "next": "convert_time_budget" },
+      { "label": "consulting", "next": "convert_time_budget" },
+      { "label": "govt-PSU", "next": "convert_time_budget" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "consulting", "next": "convert_time_budget" },
+        { "label": "product/marketing", "next": "convert_time_budget" },
+        { "label": "finance/banking", "next": "convert_time_budget" },
+        { "label": "analytics", "next": "convert_time_budget" },
+        { "label": "govt", "next": "convert_time_budget" }
+      ]
+    },
+    "captureAs": "target_type"
+  },
+  {
+    "id": "convert_time_budget",
+    "say": "How many focused prep hours a week can you realistically commit from here?",
+    "options": [
+      { "label": "<3 hrs/week", "next": "convert_ppo_intent" },
+      { "label": "3–7 hrs/week", "next": "convert_ppo_intent" },
+      { "label": "8+ hrs/week", "next": "convert_ppo_intent" }
+    ],
+    "captureAs": "time_budget"
+  },
+  {
+    "id": "convert_ppo_intent",
+    "say": "Last one -- what's this year's main play?",
+    "options": [
+      { "label": "convert an internship", "next": "convert_wrapup" },
+      { "label": "apply fresh", "next": "convert_wrapup" },
+      { "label": "both", "next": "convert_wrapup" }
+    ],
+    "captureAs": "ppo_intent"
+  },
+  {
+    "id": "convert_wrapup",
+    "say": "Solid. Right now you're {readinessBand}. I'm lining up a focused roadmap for converting your {answers.domain} track into real offers.",
+    "terminal": true,
+    "gesture": "thumbsup",
+    "arm": "right"
+  },
+
+  {
+    "id": "convert_followup_intro",
+    "say": "You're in the thick of it now. Last we spoke you mentioned {answers.goal}. {roadmapProgress}How are internship-to-PPO conversations looking?",
+    "sayByAnswer": {
+      "key": "branch",
+      "fallback": "You're in the thick of it now. Last we spoke you mentioned {answers.goal}. {roadmapProgress}How are internship-to-PPO conversations looking?",
+      "map": {
+        "CSE": "You're in the thick of it now. Last we spoke you mentioned {answers.goal}. {roadmapProgress}How are internship-to-PPO conversations looking?",
+        "ECE": "You're in the thick of it now. Last we spoke you mentioned {answers.goal}. {roadmapProgress}Core internship, IT offer, or GATE prep -- where's your head at?",
+        "EEE": "You're in the thick of it now. Last we spoke you mentioned {answers.goal}. {roadmapProgress}Core internship, PSU/GATE lane, or software -- which way are you leaning?",
+        "Civil": "You're in the thick of it now. Last we spoke you mentioned {answers.goal}. {roadmapProgress}Site internship, GATE/PSU prep, or design office -- how's it shaping up?",
+        "Mechanical": "You're in the thick of it now. Last we spoke you mentioned {answers.goal}. {roadmapProgress}Core internship, GATE lane, or design roles -- where are you aiming?"
+      }
+    },
+    "captureAs": "conversion_plan",
+    "next": "convert_followup_readiness",
+    "gesture": "wave",
+    "arm": "right"
+  },
+  {
+    "id": "convert_followup_readiness",
+    "say": "Gut check on interview prep -- if you got grilled tomorrow, how would it go?",
+    "options": [
+      { "label": "strong", "next": "convert_followup_resume" },
+      { "label": "okay", "next": "convert_followup_resume" },
+      { "label": "weak", "next": "convert_followup_resume" }
+    ],
+    "captureAs": "readiness_dsa"
+  },
+  {
+    "id": "convert_followup_resume",
+    "say": "And the resume since we last spoke -- where's it at?",
+    "options": [
+      { "label": "recruiter-ready", "next": "convert_followup_referral" },
+      { "label": "drafted", "next": "convert_followup_referral" },
+      { "label": "doesn't exist", "next": "convert_followup_referral" }
+    ],
+    "captureAs": "resume_status"
+  },
+  {
+    "id": "convert_followup_referral",
+    "say": "Referrals -- have you built any names who'd put you forward yet?",
+    "options": [
+      { "label": "alumni contacts", "next": "convert_followup_retest" },
+      { "label": "a few", "next": "convert_followup_retest" },
+      { "label": "none yet", "next": "convert_followup_retest" }
+    ],
+    "captureAs": "referral_status"
+  },
+  {
+    "id": "convert_followup_retest",
+    "say": "Re-test: last time your target was \"{answers.goal}\" on a {answers.domain} track. Still the same, or has it shifted?",
+    "options": [
+      { "label": "still the same", "next": "convert_wrapup" },
+      { "label": "it's shifted", "next": "convert_wrapup" }
+    ],
+    "captureAs": "track_check"
+  },
+
+  {
+    "id": "convert_continue",
+    "say": "Welcome back! {roadmapProgress}Your conversion roadmap's right where you left it -- keep pushing DSA, resume and referrals. I'll run a full check-in at your next 14-day mark.",
+    "terminal": true,
+    "gesture": "wave",
+    "arm": "right"
+  }
+]

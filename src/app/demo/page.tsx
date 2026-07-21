@@ -25,6 +25,9 @@ export default function DemoPage() {
   const [program, setProgram] = useState<Program>('BTech');
   const [isFirstTime, setIsFirstTime] = useState(false);
   const [streakDays, setStreakDays] = useState(0);
+  const [branch, setBranch] = useState<string | undefined>(undefined);
+  const [stepsDone, setStepsDone] = useState(0);
+  const [stepsTotal, setStepsTotal] = useState(0);
   const [showIntro, setShowIntro] = useState(false);
   const [introDone, setIntroDone] = useState(false);
 
@@ -39,6 +42,7 @@ export default function DemoPage() {
     setStudentId(id);
     setYear(y);
     setProgram(p);
+    setBranch(b);
 
     // No explicit studentId (freshly generated demo id) or the picker's
     // fresh=1 hint => first-time student: start the cyber intro optimistically
@@ -52,10 +56,12 @@ export default function DemoPage() {
     })
       .then(() => fetch(`/api/pathfinder/status?studentId=${encodeURIComponent(id)}`))
       .then((r) => (r.ok ? r.json() : { hasHistory: true }))
-      .then((s: { hasHistory: boolean; streakDays?: number }) => {
+      .then((s: { hasHistory: boolean; streakDays?: number; stepsDone?: number; stepsTotal?: number }) => {
         const first = !s.hasHistory;
         setIsFirstTime(first);
         setStreakDays(s.streakDays ?? 0);
+        setStepsDone(s.stepsDone ?? 0);
+        setStepsTotal(s.stepsTotal ?? 0);
         if (first) setShowIntro(true);
       })
       .catch(() => setIsFirstTime(false))
@@ -86,5 +92,16 @@ export default function DemoPage() {
     );
   }
 
-  return <PathfinderChat studentId={studentId} year={year} program={program} isFirstTime={isFirstTime} streakDays={streakDays} />;
+  return (
+    <PathfinderChat
+      studentId={studentId}
+      year={year}
+      program={program}
+      isFirstTime={isFirstTime}
+      streakDays={streakDays}
+      branch={branch}
+      stepsDone={stepsDone}
+      stepsTotal={stepsTotal}
+    />
+  );
 }

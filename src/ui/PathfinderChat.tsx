@@ -7,7 +7,7 @@ import type { MenuOption, Program, TurnResponse, Year } from '@/engine/types';
 import type { RoadmapItemRecord } from '@/data/repository';
 import type { CharacterController } from './character-controller';
 import RoadmapFlow from './RoadmapFlow';
-import { EXPLAINER_POOLS, Y1_PROFILE_TOUR, shuffle } from './explainer-content';
+import { BRANCH_TOURS, EXPLAINER_POOLS, Y1_PROFILE_TOUR, shuffle } from './explainer-content';
 
 // Client-only: three.js/WebGL touches window/canvas, so it must not SSR.
 const WebglRobotAvatar = dynamic(() => import('./WebglRobotAvatar'), {
@@ -32,18 +32,49 @@ interface PathfinderChatProps {
    * the conversation (see `send`/`actuallySend` below). Only for students
    * with no prior history -- returning students shouldn't see these again. */
   isFirstTime?: boolean;
-  /** Consecutive-day visit streak from /api/pathfinder/status; shown as a 🔥
+  /** Consecutive-day visit streak from /api/pathfinder/status; shown as a
    * HUD pill from 2 days up (a 0/1-day "streak" isn't one yet). */
   streakDays?: number;
+  /** Engineering branch (CSE/ECE/Civil/EEE/Mechanical) fetched at login --
+   * picks the Y1 explainer tour (BRANCH_TOURS) and shows the HUD badge. */
+  branch?: string;
+  /** Roadmap checklist progress from /api/pathfinder/status -- "N/M steps"
+   * HUD pill; hidden while the student has no roadmap yet (stepsTotal 0). */
+  stepsDone?: number;
+  stepsTotal?: number;
 }
 
 const LEVEL_TITLES = ['ROOKIE', 'EXPLORER', 'NAVIGATOR', 'TRAILBLAZER', 'LEGEND'];
 
-const NUDGES = [
-  'Still there? No rush 🙂',
-  'Psst — pick whichever feels closest, there are no wrong answers!',
-  "Take your time — I'm not going anywhere 🤖",
-  'Stuck? Just say whatever comes to mind first.',
+/** Minimal shape of the browser's native SpeechRecognition (no lib.dom typing
+ * for the webkit-prefixed variant). */
+interface SpeechRec {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+/** Fresh-Y1 node order for the progress dots under the bubble -- client-side
+ * mirror of the discover chain in engine/nodes.ts; unknown nodeIds hide it. */
+const Y1_FLOW = [
+  'discover_intro',
+  'discover_hobbies',
+  'discover_goal',
+  'discover_path',
+  'discover_package',
+  'discover_hardwork',
+  'discover_domain',
+  'discover_domain_q1',
+  'discover_time_budget',
+  'discover_roadmap_intro',
+  'discover_transition',
+  'discover_wrapup',
 ];
 
 const JOURNEY: { year: Year; name: string }[] = [
@@ -78,6 +109,9 @@ export default function PathfinderChat({
   Avatar = WebglRobotAvatar,
   isFirstTime = false,
   streakDays = 0,
+  branch,
+  stepsDone = 0,
+  stepsTotal = 0,
 }: PathfinderChatProps) {
   const avatarRef = useRef<CharacterController>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -98,9 +132,9 @@ export default function PathfinderChat({
   const [dockPos, setDockPos] = useState<'center' | 'left' | 'right'>('center');
   // Idle nudge, rendered as a small second line UNDER the question in the
   // bubble -- never replaces botSay, so the question stays visible.
-  const [nudge, setNudge] = useState<string | null>(null);
-  const nudgeCountRef = useRef(0);
-  const nudgeIdxRef = useRef(0);
+  const recognitionRef = useRef<SpeechRec | null>(null);
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const [roadmap, setRoadmap] = useState<RoadmapItemRecord[]>([]);
   const [visibleWords, setVisibleWords] = useState(0);
   // Session-only game-feel XP layer: +10 per answer, +50 on stage complete.
@@ -130,11 +164,13 @@ export default function PathfinderChat({
   // the batch is showing (or null); the answer that triggered the batch waits
   // in `pendingAnswer` until the whole batch is dismissed, then it's actually
   // sent to the engine.
-  // Y1 gets the deterministic profile-building tour (LeetCode + GitHub first,
-  // then internships/hackathons/open source, per the branch-flow chart);
-  // Y2-4 keep the random 5-of-pool pick.
+  // Y1 gets the deterministic profile-building tour picked by BRANCH (core
+  // branches open with their cert platform -- NPTEL/AutoCAD/SolidWorks/MATLAB
+  // -- instead of LeetCode); Y2-4 keep the random 5-of-pool pick.
   const [explainerBatch] = useState(() =>
-    year === 1 ? Y1_PROFILE_TOUR : shuffle(EXPLAINER_POOLS[year]).slice(0, 5)
+    year === 1
+      ? (BRANCH_TOURS[program === 'BBA' ? 'BBA' : (branch ?? 'CSE')] ?? Y1_PROFILE_TOUR)
+      : shuffle(EXPLAINER_POOLS[year]).slice(0, 5)
   );
   const [explainerStep, setExplainerStep] = useState<number | null>(null);
   const [explainerBatchDone, setExplainerBatchDone] = useState(false);
@@ -192,8 +228,6 @@ export default function PathfinderChat({
     setMultiSelect(!!response.multiSelect);
     setSelected([]); // fresh picks every turn
     setStageComplete(response.stageComplete);
-    setNudge(null);
-    nudgeCountRef.current = 0;
     // Wander: glide the mascot to the next dock for each normal question.
     if (!response.stageComplete) {
       setDockPos((p) => (p === 'center' ? 'left' : p === 'left' ? 'right' : 'center'));
@@ -261,23 +295,31 @@ export default function PathfinderChat({
         { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'power2.out' }
       );
     }
-  }, [botSay, nudge]);
+  }, [botSay]);
 
-  // Idle attention beats -- client-only: after ~25s of silence the robot waves
-  // and drops a nudge line. Capped at 2 per question (reset in applyResponse);
-  // `messages`/`input` are deliberate reset-the-timer deps, not reads.
+  // Voice input: wire the browser's native SpeechRecognition once (no deps).
+  // Absent (e.g. Firefox) -> mic button stays disabled. The onresult handler is
+  // attached per-click (below) so it always sees the current `send`.
   useEffect(() => {
-    if (loading || activeExplainer || stageComplete) return;
-    const id = setInterval(() => {
-      if (nudgeCountRef.current >= 2) return;
-      nudgeCountRef.current++;
-      const line = NUDGES[nudgeIdxRef.current++ % NUDGES.length];
-      setNudge(line);
-      avatarRef.current?.speak?.(line, { gesture: 'wave', arm: 'right' });
-    }, 25000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, input, loading, activeExplainer, stageComplete]);
+    const w = window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = 'en-IN';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onend = () => setVoiceOn(false);
+    rec.onerror = () => setVoiceOn(false);
+    recognitionRef.current = rec;
+    setVoiceSupported(true);
+    return () => {
+      try {
+        rec.abort();
+      } catch {
+        /* already stopped */
+      }
+    };
+  }, []);
 
   // Keep the transcript card scrolled to the latest turn.
   useEffect(() => {
@@ -373,9 +415,19 @@ export default function PathfinderChat({
           <span className="glass rounded-full px-3.5 py-1.5 text-xs font-medium text-[var(--ink-dim)]">
             {program} · Year {year}
           </span>
+          {branch && (
+            <span className="glass rounded-full px-3.5 py-1.5 text-xs font-semibold text-[var(--cyan)]">
+              {branch}
+            </span>
+          )}
+          {stepsTotal > 0 && (
+            <span className="glass rounded-full px-3.5 py-1.5 text-xs font-medium text-[var(--ink-dim)]">
+              {stepsDone}/{stepsTotal} steps
+            </span>
+          )}
           {streakDays >= 2 && (
             <span className="glass rounded-full px-3.5 py-1.5 font-display text-xs font-semibold text-[#fbbf24]">
-              🔥 {streakDays}-day streak
+              {streakDays}-day streak
             </span>
           )}
           {/* game-style XP HUD */}
@@ -513,9 +565,6 @@ export default function PathfinderChat({
                   {botSay.split(' ').slice(0, visibleWords).join(' ')}
                 </p>
               )}
-              {!activeExplainer && nudge && (
-                <p className="mt-1.5 text-xs text-[var(--ink-dim)]">{nudge}</p>
-              )}
               {!activeExplainer && loading && botSay && (
                 <div className="mt-2 flex justify-center">
                   <TypingDots />
@@ -524,6 +573,19 @@ export default function PathfinderChat({
             </div>
             {/* centered tail pointing down at the head */}
             <div className="mx-auto -mt-1.5 h-4 w-4 rotate-45 rounded-[4px] border-b border-r border-[var(--glass-brd)] bg-[var(--glass)]" />
+            {/* question progress dots -- fresh Y1 only, hidden during explainers */}
+            {isFirstTime && year === 1 && !activeExplainer && Y1_FLOW.includes(nodeId) && (
+              <div className="mt-2 flex justify-center gap-1.5" aria-label="conversation progress">
+                {Y1_FLOW.map((id, i) => (
+                  <span
+                    key={id}
+                    className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
+                      i <= Y1_FLOW.indexOf(nodeId) ? 'bg-[var(--cyan)]' : 'bg-white/15'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* mascot -- its ground ring lives INSIDE the WebGL scene (RobotViewer's
@@ -595,7 +657,7 @@ export default function PathfinderChat({
             </div>
             <div className="glass animate-rise relative rounded-2xl px-5 py-4 text-center">
             <p className="font-display text-base font-semibold text-[var(--cyan)]">
-              🎉 Onboarding complete — here&apos;s your roadmap.
+              Onboarding complete — here&apos;s your roadmap.
             </p>
             {roadmap.length > 0 &&
               (domainItems.length > 0 ? (
@@ -660,7 +722,7 @@ export default function PathfinderChat({
                     disabled={loading || selected.length === 0}
                     className="rounded-full bg-gradient-to-br from-[var(--violet)] to-[var(--violet-deep)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(124,92,255,0.55)] transition-transform duration-150 active:scale-95 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan)]"
                   >
-                    Confirm ✓
+                    Confirm
                   </button>
                 )}
               </div>
@@ -687,9 +749,31 @@ export default function PathfinderChat({
                 />
                 <button
                   type="button"
-                  title="Voice input (coming soon)"
-                  aria-label="Voice input (coming soon)"
-                  className="grid h-9 w-9 place-items-center rounded-full text-[var(--ink-dim)] transition-colors hover:text-[var(--cyan)]"
+                  onClick={() => {
+                    const rec = recognitionRef.current;
+                    if (!rec) return;
+                    if (voiceOn) {
+                      rec.stop();
+                      return;
+                    }
+                    rec.onresult = (e) => {
+                      const transcript = e.results?.[0]?.[0]?.transcript?.trim();
+                      if (transcript) {
+                        setInput(transcript);
+                        send(transcript);
+                      }
+                    };
+                    try {
+                      rec.start();
+                      setVoiceOn(true);
+                    } catch {
+                      /* already running */
+                    }
+                  }}
+                  disabled={loading || !voiceSupported}
+                  title={voiceSupported ? (voiceOn ? 'Stop listening' : 'Speak your answer') : 'Voice input not supported in this browser'}
+                  aria-label="Voice input"
+                  className={`grid h-9 w-9 place-items-center rounded-full transition-colors disabled:opacity-40 ${voiceOn ? 'animate-pulse bg-[var(--violet)] text-white' : 'text-[var(--ink-dim)] hover:text-[var(--cyan)]'}`}
                 >
                   <MicIcon />
                 </button>

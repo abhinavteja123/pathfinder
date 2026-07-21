@@ -34,7 +34,7 @@ const EXPRESSION: Record<AnimationState, Expression> = {
 function detectMood(text: string): Mood {
   const t = text.toLowerCase();
   if (/\b(haha|lol|hilarious|so funny|that's funny|lmao)\b/.test(t)) return 'laughing';
-  if (/\b(great|awesome|congrat|amazing|fantastic|well done|nice job|love that|exciting|🎉)\b/.test(t)) return 'happy';
+  if (/\b(great|awesome|congrat|amazing|fantastic|well done|nice job|love that|exciting)\b/.test(t)) return 'happy';
   if (/\b(unfortunately|sorry|mistake|that's wrong|incorrect|can't do that|cannot do that|error occurred|not allowed)\b/.test(t)) return 'angry';
   return null;
 }

@@ -52,7 +52,7 @@ const CATALOGS: Record<Program, Catalog> = {
  * choice is a menu answer, so lookup is a direct dictionary hit, no guessing.
  * itemId prefixed `domain-` so the UI can render this as its own "your {domain}
  * roadmap" panel, separate from the universal milestone spine. */
-const DOMAIN_CATALOG: Record<string, { itemId: string; title: string; description: string; link: string }[]> = {
+export const DOMAIN_CATALOG: Record<string, { itemId: string; title: string; description: string; link: string }[]> = {
   'AI/ML': [
     { itemId: 'domain-kaggle', title: 'Kaggle', description: 'Real datasets and ML competitions to build a portfolio.', link: 'https://www.kaggle.com' },
     { itemId: 'domain-deeplearningai', title: 'DeepLearning.AI', description: 'Structured courses straight from the field’s best.', link: 'https://www.deeplearning.ai' },
@@ -347,6 +347,35 @@ const BRANCH_STEP_GUIDE: Record<string, Record<Year, { title: string; descriptio
   },
 };
 
+// BBA business step guide -- BBA is a program (no engineering `branch`), so
+// without this it would fall back to the coding STEP_GUIDE and show a business
+// student GitHub/LeetCode/DSA steps. Business-flavored instead: LinkedIn/case
+// comps/certifications/internships, zero coding.
+const BBA_STEP_GUIDE: Record<Year, { title: string; description: string }[]> = {
+  1: [
+    { title: 'Set up a professional LinkedIn', description: 'Build a real LinkedIn profile — photo, headline, your interests. It is your business-world resume.' },
+    { title: 'Enter a case competition', description: 'Join one Unstop case comp just to feel it — structured problem-solving under time.' },
+    { title: 'Sharpen Excel + communication', description: 'Get fluent in Excel and public speaking — the two skills every business role uses daily.' },
+  ],
+  2: [
+    { title: 'Pick your specialization', description: 'Go deep on Marketing / Finance / HR / Ops / Analytics and finish one structured course in it.' },
+    { title: 'Get a recognized certification', description: 'A Google/HubSpot/analytics or finance certificate recruiters actually list.' },
+    { title: 'Do a live project or gig', description: 'A real client, AIESEC, or a startup gig — proof you can apply the theory.' },
+    { title: 'First internship', description: 'Apply on Internshala/LinkedIn — even a small business internship counts.' },
+  ],
+  3: [
+    { title: 'Target-firm summer internship', description: 'Chase internships that can convert — consulting, marketing, finance, analytics.' },
+    { title: 'Master case + GD/PI', description: 'Guesstimates, cases, and group discussions — the core of B-school placements.' },
+    { title: 'Build analytics skills', description: 'Excel, SQL, and Power BI/Tableau — the data literacy every modern business role wants.' },
+    { title: 'Recruiter-ready profile', description: 'Polish resume + LinkedIn, and line up referrals through alumni.' },
+  ],
+  4: [
+    { title: 'Convert / final placements', description: 'Push your internship toward a full-time offer and sit for final placements.' },
+    { title: 'Ace GD-PI + case rounds', description: 'Company-specific case prep and mock interviews until it feels routine.' },
+    { title: 'Backups + negotiation', description: 'Keep 2–3 offers live; negotiate before you sign.' },
+  ],
+};
+
 // --- Y4 crash-sprint track -------------------------------------------------
 // Keyed by the EXACT option labels captured in nodes.ts (launch_days_left /
 // launch_weakest_round / convert_target_type) -- menu answers, so lookups are
@@ -444,6 +473,35 @@ function buildSprintItems(answers: Record<string, string>): RoadmapItemSpec[] {
   }));
 }
 
+// Pacing suffix appended to every step description -- keyed by the EXACT
+// time_budget menu labels from nodes.ts, direct dictionary hit like the rest.
+const PACING: Record<string, string> = {
+  '<3 hrs/week': ' (pace: one small win per week.)',
+  '3–7 hrs/week': ' (pace: 2–3 focused sessions weekly.)',
+  '8+ hrs/week': ' (pace: go hard — weekly milestones.)',
+};
+
+// R1 'Above 50 LPA' stretch lane -- exactly two extra milestone items, flavored
+// by branch. Core branches (ECE/EEE/Civil/Mechanical) get the GATE + top-core
+// pair; CSE or no/unknown branch gets the open-source + interview-grind pair.
+// itemId `stretch-{k}`, order 800+k parks them after the domain items and
+// before the 900+ sprint block.
+const CORE_BRANCHES = new Set(['ECE', 'EEE', 'Civil', 'Mechanical']);
+const STRETCH_CORE: SprintBody[] = [
+  { title: 'GATE top-rank lane', description: 'A top GATE rank is the surest route to 50-LPA-class core offers — elite M.Tech, PSUs, and research labs all key off it.', link: 'https://gate2026.iitg.ac.in' },
+  { title: 'Target the top core companies', description: 'Top core recruiters weight certifications and GPA heavily — stack NPTEL/tool certs on a strong CGPA from day one.' },
+];
+const STRETCH_CSE: SprintBody[] = [
+  { title: 'Ship a merged open-source PR', description: 'A merged PR in a real project (GSoC orgs, Good First Issues) is the strongest top-company signal.', link: 'https://goodfirstissue.dev' },
+  { title: 'Company-tagged interview grind', description: 'Drill company-tagged problem sets for the top-paying companies until timed sets feel routine.', link: 'https://neetcode.io/practice' },
+];
+// BBA 50-LPA stretch -- business, zero coding (BBA has no engineering branch, so
+// without this it fell through to STRETCH_CSE and got a GitHub PR + NeetCode grind).
+const STRETCH_BBA: SprintBody[] = [
+  { title: 'Crack the premium recruiters', description: 'Top consulting / IB / product roles pay in that band and hire on case-cracking — drill cases daily and network into referrals.', link: 'https://unstop.com/competitions' },
+  { title: 'Ship a standout analytics project', description: 'A live market/finance/analytics project with real numbers is your 50-LPA differentiator — build one and put it on LinkedIn.' },
+];
+
 export function generateRoadmap(input: {
   year: Year;
   program: Program;
@@ -473,6 +531,10 @@ export function generateRoadmap(input: {
   // Y3/Y4 are conversion/placement-focused; nudge the internship copy accordingly.
   const senior = year >= 3;
   const cat = CATALOGS[program];
+  // Core branches (ECE/EEE/Civil/Mechanical) get their real specialization
+  // resources via DOMAIN_CATALOG below; the generic "Good First Issue" open-
+  // source card is CSE/coding-specific, so drop it for them -- a Civil student
+  // has no use for a GitHub open-source contribution card.
   const baseOpportunities: RoadmapItemSpec[] = [
     ...cat.hackathons,
     ...cat.internships.map((i) =>
@@ -480,7 +542,7 @@ export function generateRoadmap(input: {
         ? { ...i, description: 'Target PPO-track internships — conversion matters now.' }
         : i
     ),
-    cat.oss,
+    ...(CORE_BRANCHES.has(answers.branch) ? [] : [cat.oss]),
   ].map((o, i) => ({
     itemId: o.itemId,
     category: (o.itemId.startsWith('hack')
@@ -517,20 +579,43 @@ export function generateRoadmap(input: {
   // vertically under their year instead of adding spine columns. order encodes
   // year*10+k purely for stable within-year sorting. Core branches get their
   // BRANCH_STEP_GUIDE; CSE (or no branch answer) falls back to STEP_GUIDE.
-  const stepGuide = (answers.branch && BRANCH_STEP_GUIDE[answers.branch]) || STEP_GUIDE;
-  const stepItems: RoadmapItemSpec[] = STAGES.flatMap((s) =>
-    (stepGuide[s.year] ?? []).map((step, k) => ({
+  const stepGuide =
+    program === 'BBA'
+      ? BBA_STEP_GUIDE
+      : (answers.branch && BRANCH_STEP_GUIDE[answers.branch]) || STEP_GUIDE;
+  // Semester tag (R2): first half of a year's steps = S1, rest = S2. Pacing
+  // suffix (P3): only when time_budget was answered -- keyed by exact label.
+  const pacing = answers.time_budget ? (PACING[answers.time_budget] ?? '') : '';
+  const stepItems: RoadmapItemSpec[] = STAGES.flatMap((s) => {
+    const steps = stepGuide[s.year] ?? [];
+    const half = Math.ceil(steps.length / 2);
+    return steps.map((step, k) => ({
       itemId: `step-${s.year}-${k}`,
       category: 'milestone' as const,
-      title: step.title,
-      description: step.description,
+      title: `Y${s.year}·S${k < half ? 1 : 2} — ${step.title}`,
+      description: step.description + pacing,
       order: s.year * 10 + k,
-    }))
-  );
+    }));
+  });
+
+  // R1: Above-50 package goal earns the two-stretch lane, branch-flavored.
+  const stretchItems: RoadmapItemSpec[] =
+    answers.package_goal === 'Above 50 LPA'
+      ? (program === 'BBA' ? STRETCH_BBA : CORE_BRANCHES.has(answers.branch) ? STRETCH_CORE : STRETCH_CSE).map((s, k) => ({
+          // `stretch-4-{k}`: the year segment makes RoadmapFlow stack these
+          // under Y4 (Launch) -- the 50-LPA end-goal lane -- via yearOf().
+          itemId: `stretch-4-${k}`,
+          category: 'milestone' as const,
+          title: s.title,
+          description: s.description,
+          ...(s.link ? { link: s.link } : {}),
+          order: 800 + k,
+        }))
+      : [];
 
   // Y4 crash-sprint track: only once the student has answered launch_days_left.
   const sprintItems: RoadmapItemSpec[] =
     year === 4 && answers.days_left ? buildSprintItems(answers) : [];
 
-  return [...milestones, ...stepItems, ...baseOpportunities, ...domainItems, ...sprintItems];
+  return [...milestones, ...stepItems, ...baseOpportunities, ...domainItems, ...stretchItems, ...sprintItems];
 }

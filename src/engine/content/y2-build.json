@@ -1,0 +1,287 @@
+[
+  {
+    "id": "build_intro",
+    "say": "Hey -- Pathfinder here. First time we're properly talking, and you're already in year 2. Let's do a quick, real catch-up so I can build you the right roadmap.",
+    "sayByAnswer": {
+      "key": "branch",
+      "fallback": "Hey -- Pathfinder here. First time we're properly talking, and you're already in year 2. Let's do a quick, real catch-up so I can build you the right roadmap.",
+      "map": {
+        "CSE": "Hey -- Pathfinder here! Year 2 CSE is prime building time. Let's take stock of what you've shipped and line up the right next moves.",
+        "ECE": "Hey -- Pathfinder here! Year 2 ECE: this is when digital, signals and your first embedded builds really matter. Let's take stock and plan.",
+        "EEE": "Hey -- Pathfinder here! Year 2 EEE: machines, MATLAB, first real projects. Let's see where you're at and map the next steps.",
+        "Civil": "Hey -- Pathfinder here! Year 2 Civil: AutoCAD, site exposure, core fundamentals. Let's take stock and build your plan.",
+        "Mechanical": "Hey -- Pathfinder here! Year 2 Mechanical: CAD, workshop skills, team builds. Let's see what you've got going and plan forward."
+      }
+    },
+    "options": [{ "label": "Let's go", "next": "build_goal" }],
+    "gesture": "wave",
+    "arm": "right"
+  },
+  {
+    "id": "build_goal",
+    "say": "Quick one to start -- what are you actually aiming for by the time you graduate? A dream role, a company, a vibe... whatever's real for you.",
+    "captureAs": "goal",
+    "next": "build_domain"
+  },
+  {
+    "id": "build_domain",
+    "say": "And which field are you focusing your building on this year?",
+    "options": [
+      { "label": "AI/ML", "next": "build_skill_check" },
+      { "label": "Cybersecurity", "next": "build_skill_check" },
+      { "label": "IoT", "next": "build_skill_check" },
+      { "label": "Web Dev", "next": "build_skill_check" },
+      { "label": "Cloud/DevOps", "next": "build_skill_check" },
+      { "label": "Mobile Dev", "next": "build_skill_check" },
+      { "label": "Blockchain", "next": "build_skill_check" },
+      { "label": "Data Science", "next": "build_skill_check" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "Marketing", "next": "build_skill_check" },
+        { "label": "Finance", "next": "build_skill_check" },
+        { "label": "HR", "next": "build_skill_check" },
+        { "label": "Operations", "next": "build_skill_check" },
+        { "label": "Business Analytics", "next": "build_skill_check" }
+      ]
+    },
+    "optionsByBranch": {
+      "ECE": [
+        { "label": "VLSI Design", "next": "build_skill_check" },
+        { "label": "Embedded Systems", "next": "build_skill_check" },
+        { "label": "IoT", "next": "build_skill_check" },
+        { "label": "Signal Processing", "next": "build_skill_check" }
+      ],
+      "EEE": [
+        { "label": "Power Systems", "next": "build_skill_check" },
+        { "label": "Control Systems", "next": "build_skill_check" },
+        { "label": "Embedded Systems", "next": "build_skill_check" },
+        { "label": "IoT", "next": "build_skill_check" }
+      ],
+      "Civil": [
+        { "label": "Structural Design", "next": "build_skill_check" },
+        { "label": "Construction Management", "next": "build_skill_check" },
+        { "label": "GIS & Surveying", "next": "build_skill_check" }
+      ],
+      "Mechanical": [
+        { "label": "CAD & Design", "next": "build_skill_check" },
+        { "label": "Robotics", "next": "build_skill_check" },
+        { "label": "Thermal & Energy", "next": "build_skill_check" },
+        { "label": "Manufacturing & 3D Printing", "next": "build_skill_check" }
+      ]
+    },
+    "captureAs": "domain"
+  },
+  {
+    "id": "build_skill_check",
+    "multi": true,
+    "say": "Quick skill stocktake -- tick everything you've actually used, not just heard of.",
+    "options": [
+      { "label": "Git", "next": "build_project_count" },
+      { "label": "SQL", "next": "build_project_count" },
+      { "label": "REST APIs", "next": "build_project_count" },
+      { "label": "DSA basics", "next": "build_project_count" },
+      { "label": "Linux", "next": "build_project_count" },
+      { "label": "Cloud basics", "next": "build_project_count" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "Excel", "next": "build_project_count" },
+        { "label": "SQL", "next": "build_project_count" },
+        { "label": "PowerPoint decks", "next": "build_project_count" },
+        { "label": "Market research", "next": "build_project_count" },
+        { "label": "Financial modeling", "next": "build_project_count" }
+      ]
+    },
+    "optionsByBranch": {
+      "ECE": [
+        { "label": "Verilog", "next": "build_project_count" },
+        { "label": "Embedded C", "next": "build_project_count" },
+        { "label": "Arduino", "next": "build_project_count" },
+        { "label": "MATLAB", "next": "build_project_count" },
+        { "label": "PCB design", "next": "build_project_count" },
+        { "label": "Linux", "next": "build_project_count" }
+      ],
+      "EEE": [
+        { "label": "MATLAB/Simulink", "next": "build_project_count" },
+        { "label": "Circuit simulation", "next": "build_project_count" },
+        { "label": "PLC basics", "next": "build_project_count" },
+        { "label": "Embedded C", "next": "build_project_count" },
+        { "label": "Power-system tools", "next": "build_project_count" },
+        { "label": "Excel", "next": "build_project_count" }
+      ],
+      "Civil": [
+        { "label": "AutoCAD", "next": "build_project_count" },
+        { "label": "STAAD Pro", "next": "build_project_count" },
+        { "label": "Surveying", "next": "build_project_count" },
+        { "label": "Site work", "next": "build_project_count" },
+        { "label": "Excel", "next": "build_project_count" },
+        { "label": "Concrete/steel basics", "next": "build_project_count" }
+      ],
+      "Mechanical": [
+        { "label": "SolidWorks/CAD", "next": "build_project_count" },
+        { "label": "Ansys", "next": "build_project_count" },
+        { "label": "Workshop/fab", "next": "build_project_count" },
+        { "label": "GD&T", "next": "build_project_count" },
+        { "label": "MATLAB", "next": "build_project_count" },
+        { "label": "Excel", "next": "build_project_count" }
+      ]
+    },
+    "captureAs": "skills_have",
+    "next": "build_project_count"
+  },
+  {
+    "id": "build_project_count",
+    "say": "How many projects have you actually finished and could show someone today?",
+    "options": [
+      { "label": "0", "next": "build_dsa_status" },
+      { "label": "1", "next": "build_dsa_status" },
+      { "label": "2–3", "next": "build_dsa_status" },
+      { "label": "4+", "next": "build_dsa_status" }
+    ],
+    "captureAs": "project_count"
+  },
+  {
+    "id": "build_dsa_status",
+    "say": "And your problem-solving muscle -- aptitude, reasoning, and DSA if coding's your lane. Where's it at?",
+    "options": [
+      { "label": "not started", "next": "build_activity_check" },
+      { "label": "sometimes", "next": "build_activity_check" },
+      { "label": "daily-ish", "next": "build_activity_check" }
+    ],
+    "captureAs": "dsa_status"
+  },
+  {
+    "id": "build_activity_check",
+    "say": "What have you been building or trying lately -- any hackathons or side projects worth bragging about?",
+    "captureAs": "activity_note",
+    "next": "build_internship_intent"
+  },
+  {
+    "id": "build_internship_intent",
+    "say": "Thinking about a summer internship this year, or is that still a next-year thing?",
+    "options": [
+      { "label": "yes", "next": "build_time_budget" },
+      { "label": "unsure", "next": "build_time_budget" },
+      { "label": "not yet", "next": "build_time_budget" }
+    ],
+    "captureAs": "internship_intent"
+  },
+  {
+    "id": "build_time_budget",
+    "say": "Real talk on time -- how many hours a week can you give this outside classes?",
+    "options": [
+      { "label": "<3 hrs/week", "next": "build_learn_style" },
+      { "label": "3–7 hrs/week", "next": "build_learn_style" },
+      { "label": "8+ hrs/week", "next": "build_learn_style" }
+    ],
+    "captureAs": "time_budget"
+  },
+  {
+    "id": "build_learn_style",
+    "say": "When you pick up something new, what actually works for you?",
+    "options": [
+      { "label": "watching videos", "next": "build_blocker" },
+      { "label": "building hands-on", "next": "build_blocker" },
+      { "label": "reading it up", "next": "build_blocker" }
+    ],
+    "captureAs": "learn_style"
+  },
+  {
+    "id": "build_blocker",
+    "say": "Last one -- what's the biggest thing slowing you down right now?",
+    "options": [
+      { "label": "time", "next": "build_wrapup" },
+      { "label": "what to build", "next": "build_wrapup" },
+      { "label": "confidence", "next": "build_wrapup" },
+      { "label": "coursework", "next": "build_wrapup" }
+    ],
+    "captureAs": "blocker"
+  },
+  {
+    "id": "build_wrapup",
+    "say": "Good progress -- you're {momentumBand}. Updating your roadmap with a few internships and hackathons worth trying next.",
+    "sayByAnswer": {
+      "key": "blocker",
+      "fallback": "Good progress -- you're {momentumBand}. Updating your roadmap with a few internships and hackathons worth trying next.",
+      "map": {
+        "time": "Time's the classic one -- you're {momentumBand}, so I'm loading your roadmap with small wins that fit inside a single free evening.",
+        "what to build": "That's the easiest blocker to fix -- you're {momentumBand}, and I'm dropping two concrete project ideas straight onto your roadmap.",
+        "confidence": "You're {momentumBand} -- that's real evidence, not luck. I'm adding a couple of low-stakes wins to your roadmap to stack proof on your side.",
+        "coursework": "Fair -- grades matter too. You're {momentumBand}, so I'll keep your roadmap light: one skill and one small build that complement your courses."
+      }
+    },
+    "terminal": true,
+    "gesture": "thumbsup",
+    "arm": "right"
+  },
+
+  {
+    "id": "build_followup_intro",
+    "say": "Welcome back! Last time you were chasing {answers.goal}. {roadmapProgress}How's the building going -- projects, DSA, all of it?",
+    "sayByAnswer": {
+      "key": "branch",
+      "fallback": "Welcome back! Last time you were chasing {answers.goal}. {roadmapProgress}How's it going -- projects, skills, all of it?",
+      "map": {
+        "CSE": "Welcome back! Last time you were chasing {answers.goal}. {roadmapProgress}How's the building going -- projects, DSA, all of it?",
+        "ECE": "Welcome back! Last time you were chasing {answers.goal}. {roadmapProgress}How's it going -- labs, embedded tinkering, any cert progress?",
+        "EEE": "Welcome back! Last time you were chasing {answers.goal}. {roadmapProgress}How's it going -- core courses, MATLAB, any project sparks?",
+        "Civil": "Welcome back! Last time you were chasing {answers.goal}. {roadmapProgress}How's it going -- AutoCAD practice, site exposure, coursework?",
+        "Mechanical": "Welcome back! Last time you were chasing {answers.goal}. {roadmapProgress}How's it going -- CAD hours, workshop time, team builds?"
+      }
+    },
+    "captureAs": "activity_note",
+    "next": "build_followup_projects",
+    "gesture": "wave",
+    "arm": "right"
+  },
+  {
+    "id": "build_followup_projects",
+    "say": "Quick pulse -- how many projects can you show someone today?",
+    "options": [
+      { "label": "0", "next": "build_followup_dsa" },
+      { "label": "1", "next": "build_followup_dsa" },
+      { "label": "2–3", "next": "build_followup_dsa" },
+      { "label": "4+", "next": "build_followup_dsa" }
+    ],
+    "captureAs": "project_count"
+  },
+  {
+    "id": "build_followup_dsa",
+    "say": "And your problem-solving/aptitude practice -- where's it at since we last spoke?",
+    "options": [
+      { "label": "not started", "next": "build_followup_blocker" },
+      { "label": "sometimes", "next": "build_followup_blocker" },
+      { "label": "daily-ish", "next": "build_followup_blocker" }
+    ],
+    "captureAs": "dsa_status"
+  },
+  {
+    "id": "build_followup_blocker",
+    "say": "What's the one thing slowing you down most right now?",
+    "options": [
+      { "label": "time", "next": "build_followup_retest" },
+      { "label": "what to build", "next": "build_followup_retest" },
+      { "label": "confidence", "next": "build_followup_retest" },
+      { "label": "coursework", "next": "build_followup_retest" }
+    ],
+    "captureAs": "blocker"
+  },
+  {
+    "id": "build_followup_retest",
+    "say": "Re-test: last time your goal was \"{answers.goal}\" and your focus was {answers.domain}. Still the same, or has it shifted?",
+    "options": [
+      { "label": "still the same", "next": "build_wrapup" },
+      { "label": "it's shifted", "next": "build_wrapup" }
+    ],
+    "captureAs": "track_check"
+  },
+
+  {
+    "id": "build_continue",
+    "say": "Welcome back! {roadmapProgress}Your build-year roadmap's right where you left it -- projects, skills, that internship push. Keep stacking; I'll run a proper check-in at your next 14-day mark.",
+    "terminal": true,
+    "gesture": "wave",
+    "arm": "right"
+  }
+]

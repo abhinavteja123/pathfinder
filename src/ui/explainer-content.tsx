@@ -75,6 +75,15 @@ function GraduationCapIcon() {
   );
 }
 
+function CubeIcon() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z" />
+      <path d="M12 12 21 7M12 12v10M12 12 3 7" />
+    </svg>
+  );
+}
+
 function ChatIcon() {
   return (
     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -398,6 +407,63 @@ const Y4_SLIDES: ExplainerSlide[] = [
   },
 ];
 
+/** Branch-specific Y1 cert/tool beats -- NPTEL plus the CAD/engineering tools
+ * core-branch (Civil/Mech/EEE/ECE) recruiters look for. */
+const BRANCH_SLIDES: ExplainerSlide[] = [
+  {
+    key: 'nptel',
+    title: 'This is NPTEL',
+    body: 'Free IIT courses -- and the certifications core recruiters actually recognize on a resume.',
+    gesture: 'thumbsup',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#0e7490">
+        <GraduationCapIcon />
+        <span className="font-display text-base font-semibold text-white">NPTEL</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'autocad',
+    title: 'This is AutoCAD',
+    body: 'The drafting certification every Civil student should hold -- site plans and drawings start here.',
+    gesture: 'peace',
+    arm: 'left',
+    visual: (
+      <BrowserFrame bg="#d92b2b">
+        <CubeIcon />
+        <span className="font-display text-base font-semibold text-white">AutoCAD</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'solidworks',
+    title: 'This is SolidWorks',
+    body: 'The CAD certification Mechanical recruiters list on job posts -- start with the CSWA.',
+    gesture: 'thumbsup',
+    arm: 'right',
+    visual: (
+      <BrowserFrame bg="#d40000">
+        <CubeIcon />
+        <span className="font-display text-base font-semibold text-white">SolidWorks</span>
+      </BrowserFrame>
+    ),
+  },
+  {
+    key: 'matlab',
+    title: 'This is MATLAB',
+    body: 'The core-engineering tool for simulation and signals -- the free Onramp courses give you certificates too.',
+    gesture: 'peace',
+    arm: 'left',
+    visual: (
+      <BrowserFrame bg="#e26a17">
+        <ChartIcon />
+        <span className="font-display text-base font-semibold text-white">MATLAB</span>
+      </BrowserFrame>
+    ),
+  },
+];
+
 /** Per-year explainer pools -- PathfinderChat picks by its `year` prop.
  * Year 1 keeps the original discovery pool above. */
 export const EXPLAINER_POOLS: Record<1 | 2 | 3 | 4, ExplainerSlide[]> = {
@@ -407,14 +473,35 @@ export const EXPLAINER_POOLS: Record<1 | 2 | 3 | 4, ExplainerSlide[]> = {
   4: Y4_SLIDES,
 };
 
+/** Slide lookup across every pool a tour can borrow from. */
+function pick(keys: string[]): ExplainerSlide[] {
+  return keys
+    .map((key) => [...EXPLAINER_SLIDES, ...Y2_SLIDES, ...BRANCH_SLIDES].find((s) => s.key === key))
+    .filter((s): s is ExplainerSlide => s !== undefined);
+}
+
 /** Y1 profile-building tour, in the flow chart's order: LeetCode + GitHub
  * profile FIRST (the "build your profile" previews), then internships
  * (Internshala), hackathons (Devfolio), and open source (GSoC, borrowed from
  * the Y2 pool). Deterministic -- no shuffle -- so every fresh Y1 student gets
  * exactly this walkthrough. */
-export const Y1_PROFILE_TOUR: ExplainerSlide[] = ['leetcode', 'github', 'internshala', 'devfolio', 'gsoc']
-  .map((key) => [...EXPLAINER_SLIDES, ...EXPLAINER_POOLS[2]].find((s) => s.key === key))
-  .filter((s): s is ExplainerSlide => s !== undefined);
+export const Y1_PROFILE_TOUR: ExplainerSlide[] = pick(['leetcode', 'github', 'internshala', 'devfolio', 'gsoc']);
+
+/** Branch-aware Y1 tours. CSE keeps the coding profile tour (LeetCode/GitHub/
+ * hackathons). Core branches (ECE/EEE/Civil/Mechanical) get ONLY branch-relevant
+ * beats -- their tool/cert platform, NPTEL certs, and internships -- with NO
+ * GitHub / LeetCode / Devfolio / GSoC (a Civil student has no use for a "this is
+ * GitHub" slide). Unknown branch falls back to CSE. */
+export const BRANCH_TOURS: Record<string, ExplainerSlide[]> = {
+  CSE: Y1_PROFILE_TOUR,
+  ECE: pick(['nptel', 'matlab', 'internshala']),
+  EEE: pick(['matlab', 'nptel', 'internshala']),
+  Civil: pick(['autocad', 'nptel', 'internshala']),
+  Mechanical: pick(['solidworks', 'nptel', 'internshala']),
+  // BBA is a program, not an engineering branch -- business-only beats
+  // (LinkedIn / online certs / internships), never GitHub/LeetCode.
+  BBA: pick(['linkedin', 'coursera', 'internshala']),
+};
 
 /** Fisher-Yates -- used to pick "any 5 random" of the pool above per conversation. */
 export function shuffle<T>(items: T[]): T[] {

@@ -1,24 +1,25 @@
 export type Year = 1 | 2 | 3 | 4;
 export type Program = 'BTech' | 'BBA';
 export type AnimationState = 'idle' | 'listening' | 'thinking' | 'talking' | 'celebrating';
-export type NodeKind = 'fixed' | 'llm' | 'hybrid';
 /** Matches RobotViewerRef.triggerGestureAnimation's gesture union exactly. */
 export type Gesture = 'wave' | 'thumbsup' | 'peace' | 'stop' | 'handshake';
 export type Arm = 'left' | 'right';
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
 
 export interface MenuOption {
   label: string;
   next: string;
 }
 
+/**
+ * The one and only node kind. The bot is now 100% rule-based -- there are no
+ * LLM/hybrid nodes any more, so every conversation node is authored, static
+ * data that lives in the JSON question trees (src/engine/content/*.json) and is
+ * validated by node-schema.ts at load. A node either shows a menu (`options` /
+ * the per-branch/program/answer overrides) or takes a free-text answer, and
+ * always captures via `captureAs` and advances via a matched option or `next`.
+ */
 export interface FixedNode {
   id: string;
-  kind: 'fixed';
   /** Supports {answers.KEY} interpolation against EngineContext.answers */
   say: string;
   options?: MenuOption[];
@@ -29,6 +30,11 @@ export interface FixedNode {
    * Mechanical -- seeded at login, not asked in chat). Wins over optionsByProgram;
    * falls through when the student has no branch answer (e.g. BBA). */
   optionsByBranch?: Record<string, MenuOption[]>;
+  /** Optional per-answer override, keyed by any captured answer (e.g. domain).
+   * Resolved FIRST in fsm.ts nodeOptions -- wins over optionsByBranch/
+   * optionsByProgram/options; falls through when the answer is missing or has
+   * no map entry. Lets one node show a different menu per prior choice. */
+  optionsByAnswer?: { key: string; map: Record<string, MenuOption[]> };
   /** Multi-select menu: the UI renders checkboxes and sends the chosen option
    * labels as ONE comma-joined string ("Git, SQL, REST APIs"). fsm captures it
    * whole into captureAs and advances via `next` (no per-option matching). */
@@ -37,51 +43,32 @@ export interface FixedNode {
   captureAs?: string;
   /** Optional: pick `say` from a scripted lookup keyed by a captured answer
    * (e.g. the domain menu choice) instead of one static string -- lets a
-   * single node give a different canned line per answer with ZERO LLM calls.
-   * Falls back to `fallback`, or to `say` itself if no fallback given. */
+   * single node give a different canned line per answer. Falls back to
+   * `fallback`, or to `say` itself if no fallback given. */
   sayByAnswer?: { key: string; map: Record<string, string>; fallback?: string };
   /** Marks the stage (Discover/Build/Convert/Launch) as complete when reached */
   terminal?: boolean;
-  /** Authored (not LLM-picked) gesture for this exact moment -- deterministic,
-   * same node always plays the same gesture. Free-text llm/hybrid nodes have
-   * no such field; those fall back to client-side keyword mood-detection. */
+  /** Authored gesture for this exact moment -- deterministic, same node always
+   * plays the same gesture. */
   gesture?: Gesture;
   arm?: Arm;
 }
 
-export interface LlmNode {
-  id: string;
-  kind: 'llm';
-  systemPrompt: string;
-  next: string;
-  captureAs?: string;
-  terminal?: boolean;
-}
-
-export interface HybridNode {
-  id: string;
-  kind: 'hybrid';
-  /** profile_answers keys this node still needs filled */
-  slots: string[];
-  phrasingPrompt: string;
-  next: string;
-  terminal?: boolean;
-}
-
-export type EngineNode = FixedNode | LlmNode | HybridNode;
+export type EngineNode = FixedNode;
 
 export interface EngineContext {
   studentId: string;
   year: Year;
   program: Program;
   hasHistory: boolean;
+  /** True when the student's 14-day check-in is due -- routes returning
+   * students into the 5-question FOLLOWUP track instead of the brief resume. */
+  reengagementDue: boolean;
   answers: Record<string, string>;
-  history: ChatMessage[];
   /** Short authored phrase referencing saved/started/done roadmap items, e.g.
    * "You've got 2 saved on your roadmap. " -- empty string if nothing to report.
    * Computed server-side (turn/route.ts) before processTurn; interpolated via
-   * {roadmapProgress} in *_continue nodes so returning students get a real
-   * progress-aware opener instead of a generic "welcome back". */
+   * {roadmapProgress} in returning-student nodes. */
   roadmapProgress?: string;
 }
 

@@ -1,0 +1,556 @@
+[
+  {
+    "id": "discover_intro",
+    "say": "Hi! I'm Pathfinder -- your companion here. Good to meet you!",
+    "sayByAnswer": {
+      "key": "branch",
+      "fallback": "Hi! I'm Pathfinder -- your companion here. Good to meet you!",
+      "map": {
+        "CSE": "Hi! I'm Pathfinder. I already pulled your details -- CSE, nice! You're sitting right in the middle of the tech world. Let's figure out where YOU fit in it.",
+        "ECE": "Hi! I'm Pathfinder. I checked your details -- ECE! Chips, circuits and signals run the world, and I've got a plan shaped just for your branch.",
+        "Civil": "Hi! I'm Pathfinder. Your details say Civil -- the people who literally build the world. Let's build your career the same way, brick by brick.",
+        "EEE": "Hi! I'm Pathfinder. I see you're EEE -- power, machines, control systems. Big field, big opportunities. Let's map yours out.",
+        "Mechanical": "Hi! I'm Pathfinder. Details say Mechanical -- the OG engineering branch. Design, robotics, manufacturing... lots of doors. Let's find yours."
+      }
+    },
+    "options": [{ "label": "Let's go", "next": "discover_hobbies" }],
+    "gesture": "wave",
+    "arm": "right"
+  },
+  {
+    "id": "discover_hobbies",
+    "say": "Before the serious stuff -- what do you actually enjoy when you're NOT studying? Games, sport, music, drawing, anything goes.",
+    "captureAs": "hobbies",
+    "next": "discover_goal"
+  },
+  {
+    "id": "discover_goal",
+    "say": "Love that. Now the big one -- when you picture life a few years out, what's the dream? Doesn't have to be polished, just say it how it feels.",
+    "captureAs": "goal",
+    "next": "discover_path"
+  },
+  {
+    "id": "discover_path",
+    "say": "So when you picture yourself after college -- which of these feels most like you?",
+    "options": [
+      { "label": "Big enterprise (FAANG-style)", "next": "discover_package" },
+      { "label": "Solid job, good growth", "next": "discover_package" },
+      { "label": "My own startup", "next": "discover_startup_scale" }
+    ],
+    "captureAs": "career_path"
+  },
+  {
+    "id": "discover_startup_scale",
+    "say": "Founder energy! Forget salary packages for a second -- when you picture your startup working, what's the dream scale?",
+    "options": [
+      { "label": "A profitable business I run", "next": "discover_hardwork" },
+      { "label": "A funded, fast-growing startup", "next": "discover_hardwork" },
+      { "label": "A category-defining company", "next": "discover_hardwork" }
+    ],
+    "captureAs": "startup_scale"
+  },
+  {
+    "id": "discover_package",
+    "say": "Okay, honest question -- what package are you dreaming of?",
+    "sayByAnswer": {
+      "key": "career_path",
+      "fallback": "Okay, honest question -- what package are you dreaming of?",
+      "map": {
+        "Big enterprise (FAANG-style)": "Big league, I like it. Honest question then -- what's the package you're dreaming of?",
+        "Solid job, good growth": "Respect -- stability plus growth is a real strategy. So what package are you aiming at?",
+        "My own startup": "Founder energy! Even founders benchmark themselves though -- what income level are you aiming for?"
+      }
+    },
+    "options": [
+      { "label": "Below 50 LPA", "next": "discover_hardwork" },
+      { "label": "Above 50 LPA", "next": "discover_hardwork" }
+    ],
+    "captureAs": "package_goal"
+  },
+  {
+    "id": "discover_hardwork",
+    "say": "Then let's be real with each other -- goals like that don't happen by attending classes alone.",
+    "sayByAnswer": {
+      "key": "package_goal",
+      "fallback": "Then let's be real with each other -- goals like that don't happen by attending classes alone.",
+      "map": {
+        "Above 50 LPA": "50+ LPA -- I won't sugarcoat it: that's top 1% territory. It means consistent daily practice, real projects, and showing up even when it's boring. The good news? Starting in year 1, you have TIME on your side. Ready to hear how?",
+        "Below 50 LPA": "Totally achievable -- but 'achievable' still means real, consistent work: skills, projects, practice. Most people underestimate that part. The good news is you're starting early, and that's the biggest advantage there is. Want the plan?"
+      }
+    },
+    "options": [
+      { "label": "I'm ready", "next": "discover_domain" },
+      { "label": "Show me how", "next": "discover_domain" }
+    ],
+    "captureAs": "hardwork_ack",
+    "gesture": "stop",
+    "arm": "right"
+  },
+  {
+    "id": "discover_domain",
+    "say": "Cool. Which field are you most into right now?",
+    "options": [
+      { "label": "AI/ML", "next": "discover_domain_q1" },
+      { "label": "Cybersecurity", "next": "discover_domain_q1" },
+      { "label": "IoT", "next": "discover_domain_q1" },
+      { "label": "Web Dev", "next": "discover_domain_q1" },
+      { "label": "Cloud/DevOps", "next": "discover_domain_q1" },
+      { "label": "Mobile Dev", "next": "discover_domain_q1" },
+      { "label": "Blockchain", "next": "discover_domain_q1" },
+      { "label": "Data Science", "next": "discover_domain_q1" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "Marketing", "next": "discover_domain_q1" },
+        { "label": "Finance", "next": "discover_domain_q1" },
+        { "label": "HR", "next": "discover_domain_q1" },
+        { "label": "Operations", "next": "discover_domain_q1" },
+        { "label": "Business Analytics", "next": "discover_domain_q1" }
+      ]
+    },
+    "optionsByBranch": {
+      "ECE": [
+        { "label": "VLSI Design", "next": "discover_domain_q1" },
+        { "label": "Embedded Systems", "next": "discover_domain_q1" },
+        { "label": "IoT", "next": "discover_domain_q1" },
+        { "label": "Signal Processing", "next": "discover_domain_q1" }
+      ],
+      "EEE": [
+        { "label": "Power Systems", "next": "discover_domain_q1" },
+        { "label": "Control Systems", "next": "discover_domain_q1" },
+        { "label": "Embedded Systems", "next": "discover_domain_q1" },
+        { "label": "IoT", "next": "discover_domain_q1" }
+      ],
+      "Civil": [
+        { "label": "Structural Design", "next": "discover_domain_q1" },
+        { "label": "Construction Management", "next": "discover_domain_q1" },
+        { "label": "GIS & Surveying", "next": "discover_domain_q1" }
+      ],
+      "Mechanical": [
+        { "label": "CAD & Design", "next": "discover_domain_q1" },
+        { "label": "Robotics", "next": "discover_domain_q1" },
+        { "label": "Thermal & Energy", "next": "discover_domain_q1" },
+        { "label": "Manufacturing & 3D Printing", "next": "discover_domain_q1" }
+      ]
+    },
+    "captureAs": "domain"
+  },
+  {
+    "id": "discover_domain_q1",
+    "say": "What draws you to that field the most?",
+    "sayByAnswer": {
+      "key": "domain",
+      "fallback": "What draws you to that field the most?",
+      "map": {
+        "AI/ML": "Are you more curious about how AI models actually learn, or more into the cool stuff you can build with them?",
+        "Cybersecurity": "Is it the hacker/puzzle-solving side that pulls you in, or more the idea of protecting systems and data?",
+        "IoT": "Are you more into the physical gadgets and sensors side, or the idea of connecting everyday things to the internet?",
+        "ECE": "Are you more into the hardware/circuits side, or the signal-processing/software side?",
+        "EEE": "Are you leaning more toward power systems, or control systems and automation?",
+        "Web Dev": "Frontend, backend, or do you like doing both end to end?",
+        "Cloud/DevOps": "Is it the idea of running apps at massive scale that excites you, or more the automation/DevOps side of things?",
+        "Mobile Dev": "iOS, Android, or cross-platform stuff like Flutter or React Native?",
+        "Blockchain": "Is it the decentralization idea that hooks you, or more the tech behind smart contracts and crypto?",
+        "Data Science": "Do you enjoy the analysis and stats side more, or the visualization and storytelling side?",
+        "Marketing": "Are you more drawn to the creative side -- brand, content, campaigns -- or the numbers side like growth and analytics?",
+        "Finance": "Is it markets and investing that pull you in, or more the corporate side -- valuation, deals, planning?",
+        "HR": "Are you more into the people side -- hiring, culture -- or the strategy side like org design and people analytics?",
+        "Operations": "Do you like the supply-chain and logistics puzzle, or more the process-improvement and efficiency side?",
+        "Business Analytics": "Do you enjoy digging into data to find the story, or presenting insights that change decisions?",
+        "VLSI Design": "Is it designing the chips themselves that excites you, or verifying they actually work?",
+        "Embedded Systems": "Are you more into programming the tiny brains inside devices, or wiring up the hardware around them?",
+        "Signal Processing": "Audio, images, or communications -- which kind of signal sounds most fun to play with?",
+        "Power Systems": "Grids and renewables, or the machines side -- motors, drives, transformers?",
+        "Control Systems": "Is it automation and PLCs that pull you, or the math of making systems behave?",
+        "Structural Design": "Bridges and towers, or buildings -- what would you love to see standing because of you?",
+        "Construction Management": "Is it running big sites and teams that appeals, or the planning/scheduling puzzle?",
+        "GIS & Surveying": "Maps and drones, or the data side -- turning terrain into decisions?",
+        "CAD & Design": "Product design and modeling, or simulation -- stress-testing things before they exist?",
+        "Robotics": "Building the robot body, or programming its brain -- which half grabs you more?",
+        "Thermal & Energy": "Engines and turbines, or the green side -- solar, batteries, sustainable energy?",
+        "Manufacturing & 3D Printing": "Traditional production lines, or the new world of additive manufacturing and 3D printing?"
+      }
+    },
+    "captureAs": "domain_note1",
+    "next": "discover_time_budget"
+  },
+  {
+    "id": "discover_time_budget",
+    "say": "Honestly now -- how many hours a week can you actually give this outside classes?",
+    "options": [
+      { "label": "<3 hrs/week", "next": "discover_learn_style" },
+      { "label": "3–7 hrs/week", "next": "discover_learn_style" },
+      { "label": "8+ hrs/week", "next": "discover_learn_style" }
+    ],
+    "captureAs": "time_budget"
+  },
+  {
+    "id": "discover_learn_style",
+    "say": "When something new actually clicks for you, how does it usually happen?",
+    "options": [
+      { "label": "watching videos", "next": "discover_domain_confidence" },
+      { "label": "building hands-on", "next": "discover_domain_confidence" },
+      { "label": "reading it up", "next": "discover_domain_confidence" }
+    ],
+    "captureAs": "learn_style"
+  },
+  {
+    "id": "discover_domain_confidence",
+    "say": "Last one -- how settled do you feel about {answers.domain}? Gut check, no wrong answer.",
+    "options": [
+      { "label": "just exploring", "next": "discover_roadmap_intro" },
+      { "label": "fairly sure", "next": "discover_roadmap_intro" },
+      { "label": "all-in", "next": "discover_roadmap_intro" }
+    ],
+    "captureAs": "domain_confidence"
+  },
+  {
+    "id": "discover_roadmap_intro",
+    "say": "Perfect. {packagePush}Now let me line up the exact list -- a roadmap built around {answers.domain} and your goal.",
+    "sayByAnswer": {
+      "key": "branch",
+      "fallback": "Perfect. {packagePush}Now let me line up the exact list -- a roadmap built around {answers.domain} and your goal.",
+      "map": {
+        "CSE": "Perfect. {packagePush}For CSE the game is clear: a strong coding profile -- LeetCode practice, real projects on GitHub, internships, hackathons. Let me line up the exact roadmap for your {answers.domain} goal.",
+        "ECE": "Perfect. {packagePush}For ECE, listen carefully: alongside coding basics, VLSI and embedded certifications genuinely matter -- and your college courses (digital design, signals) are NOT just marks, they're your foundation. Let me line up your {answers.domain} roadmap.",
+        "EEE": "Perfect. {packagePush}For EEE the winning combo is: core certifications (MATLAB, power/control tools), taking your college courses seriously, plus basic coding. Let me line up your {answers.domain} roadmap.",
+        "Civil": "Perfect. {packagePush}For Civil, the industry looks for tool certifications -- AutoCAD, STAAD Pro -- and strong fundamentals from your college courses. Site exposure counts too. Let me line up your {answers.domain} roadmap.",
+        "Mechanical": "Perfect. {packagePush}For Mechanical, CAD tool certifications (SolidWorks, Fusion 360), your core college courses, and hands-on projects are what open doors. Let me line up your {answers.domain} roadmap."
+      }
+    },
+    "options": [{ "label": "Show me", "next": "discover_transition" }],
+    "gesture": "thumbsup",
+    "arm": "right"
+  },
+  {
+    "id": "discover_transition",
+    "say": "First things first -- your profile. Let me walk you through the places where it gets built: coding practice, your project portfolio, internships, open source and hackathons. Ready?",
+    "sayByAnswer": {
+      "key": "branch",
+      "fallback": "First things first -- your profile. Let me walk you through where it gets built: your online presence, real projects, certifications, and internships. Ready?",
+      "map": {
+        "CSE": "First things first -- your profile. Let me walk you through the places where it gets built: coding practice, your project portfolio, internships, open source and hackathons. Ready?",
+        "ECE": "First things first -- your edge. Let me walk you through where core-branch profiles get built: NPTEL certifications, the tools your field uses, and internships. Ready?",
+        "EEE": "First things first -- your edge. Let me walk you through where core-branch profiles get built: MATLAB and NPTEL certifications, plus real internships. Ready?",
+        "Civil": "First things first -- your edge. Let me walk you through where Civil profiles get built: AutoCAD and NPTEL certifications, plus site internships. Ready?",
+        "Mechanical": "First things first -- your edge. Let me walk you through where Mechanical profiles get built: CAD certifications, NPTEL courses, and real internships. Ready?"
+      }
+    },
+    "options": [{ "label": "Let's go", "next": "discover_wrapup" }],
+    "gesture": "wave",
+    "arm": "right"
+  },
+  {
+    "id": "discover_wrapup",
+    "say": "Here's your roadmap -- your own journey, plus your {answers.domain} track, built just for you. And hey -- we'll meet again soon. I'll remember everything from today, so next time we just pick up right where we left off.",
+    "terminal": true,
+    "gesture": "thumbsup",
+    "arm": "right"
+  },
+
+  {
+    "id": "discover_followup_intro",
+    "say": "Welcome back! {roadmapProgress}Last time we set up your {answers.domain} track. What have you been exploring since?",
+    "captureAs": "checkin_note",
+    "next": "discover_checkin_practice",
+    "gesture": "wave",
+    "arm": "right"
+  },
+  {
+    "id": "discover_checkin_practice",
+    "say": "And the practice itself -- the {answers.domain} stuff, the roadmap steps -- how's it actually going?",
+    "options": [
+      { "label": "going strong", "next": "discover_checkin_steps" },
+      { "label": "on and off", "next": "discover_checkin_steps" },
+      { "label": "haven't started yet", "next": "discover_checkin_steps" }
+    ],
+    "captureAs": "practice_status"
+  },
+  {
+    "id": "discover_checkin_steps",
+    "say": "Quick pulse -- how many roadmap steps have you actually ticked off so far?",
+    "options": [
+      { "label": "a few done", "next": "discover_checkin_quiz" },
+      { "label": "started one", "next": "discover_checkin_quiz" },
+      { "label": "none yet", "next": "discover_checkin_quiz" }
+    ],
+    "captureAs": "steps_status"
+  },
+  {
+    "id": "discover_checkin_quiz",
+    "say": "Pop quiz, no pressure -- quick re-test: what beats intensity every time?",
+    "sayByAnswer": {
+      "key": "domain",
+      "fallback": "Pop quiz, no pressure -- quick re-test: what beats intensity every time?",
+      "map": {
+        "AI/ML": "Pop quiz from your track: a model learning from labeled examples -- what kind of learning is that?",
+        "Cybersecurity": "Pop quiz from your track: an attack that tricks someone into revealing their password is called?",
+        "IoT": "Pop quiz from your track: which protocol was built for tiny IoT device messages?",
+        "ECE": "Pop quiz from your track: AND, OR and NOT are examples of what?",
+        "EEE": "Pop quiz from your track: which device steps AC voltage up or down?",
+        "Web Dev": "Pop quiz from your track: which of these actually styles a web page?",
+        "Cloud/DevOps": "Pop quiz from your track: which tool packages an app together with its dependencies?",
+        "Mobile Dev": "Pop quiz from your track: Flutter apps are written in which language?",
+        "Blockchain": "Pop quiz from your track: Ethereum smart contracts are usually written in?",
+        "Data Science": "Pop quiz from your track: which chart shows how values are distributed?",
+        "VLSI Design": "Pop quiz from your track: which language describes digital hardware?",
+        "Embedded Systems": "Pop quiz from your track: the classic language for programming microcontrollers?",
+        "Signal Processing": "Pop quiz from your track: which transform breaks a signal into its frequencies?",
+        "Power Systems": "Pop quiz from your track: the unit of electrical power is?",
+        "Control Systems": "Pop quiz from your track: the controller with proportional-integral-derivative action?",
+        "Structural Design": "Pop quiz from your track: concrete is strongest under which force?",
+        "Construction Management": "Pop quiz from your track: which chart is used to schedule project tasks?",
+        "GIS & Surveying": "Pop quiz from your track: which instrument measures angles on site?",
+        "CAD & Design": "Pop quiz from your track: SolidWorks is primarily used for?",
+        "Robotics": "Pop quiz from your track: the framework most research robots run on?",
+        "Thermal & Energy": "Pop quiz from your track: the first law of thermodynamics is about?",
+        "Manufacturing & 3D Printing": "Pop quiz from your track: 3D printing is also known as?"
+      }
+    },
+    "options": [
+      { "label": "consistency", "next": "discover_checkin_quiz_grade" },
+      { "label": "cramming", "next": "discover_checkin_quiz_grade" }
+    ],
+    "optionsByAnswer": {
+      "key": "domain",
+      "map": {
+        "AI/ML": [
+          { "label": "supervised learning", "next": "discover_checkin_quiz_grade" },
+          { "label": "unsupervised learning", "next": "discover_checkin_quiz_grade" },
+          { "label": "reinforcement learning", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Cybersecurity": [
+          { "label": "phishing", "next": "discover_checkin_quiz_grade" },
+          { "label": "DDoS", "next": "discover_checkin_quiz_grade" },
+          { "label": "SQL injection", "next": "discover_checkin_quiz_grade" }
+        ],
+        "IoT": [
+          { "label": "MQTT", "next": "discover_checkin_quiz_grade" },
+          { "label": "FTP", "next": "discover_checkin_quiz_grade" },
+          { "label": "SMTP", "next": "discover_checkin_quiz_grade" }
+        ],
+        "ECE": [
+          { "label": "logic gates", "next": "discover_checkin_quiz_grade" },
+          { "label": "flip-flops", "next": "discover_checkin_quiz_grade" },
+          { "label": "op-amps", "next": "discover_checkin_quiz_grade" }
+        ],
+        "EEE": [
+          { "label": "transformer", "next": "discover_checkin_quiz_grade" },
+          { "label": "rectifier", "next": "discover_checkin_quiz_grade" },
+          { "label": "inverter", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Web Dev": [
+          { "label": "CSS", "next": "discover_checkin_quiz_grade" },
+          { "label": "HTTP", "next": "discover_checkin_quiz_grade" },
+          { "label": "SQL queries", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Cloud/DevOps": [
+          { "label": "Docker", "next": "discover_checkin_quiz_grade" },
+          { "label": "Git", "next": "discover_checkin_quiz_grade" },
+          { "label": "Jenkins", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Mobile Dev": [
+          { "label": "Dart", "next": "discover_checkin_quiz_grade" },
+          { "label": "Swift", "next": "discover_checkin_quiz_grade" },
+          { "label": "Kotlin", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Blockchain": [
+          { "label": "Solidity", "next": "discover_checkin_quiz_grade" },
+          { "label": "Python", "next": "discover_checkin_quiz_grade" },
+          { "label": "C++", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Data Science": [
+          { "label": "histogram", "next": "discover_checkin_quiz_grade" },
+          { "label": "pie chart", "next": "discover_checkin_quiz_grade" },
+          { "label": "line chart", "next": "discover_checkin_quiz_grade" }
+        ],
+        "VLSI Design": [
+          { "label": "Verilog", "next": "discover_checkin_quiz_grade" },
+          { "label": "JavaScript", "next": "discover_checkin_quiz_grade" },
+          { "label": "HTML", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Embedded Systems": [
+          { "label": "C", "next": "discover_checkin_quiz_grade" },
+          { "label": "Java", "next": "discover_checkin_quiz_grade" },
+          { "label": "PHP", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Signal Processing": [
+          { "label": "Fourier transform", "next": "discover_checkin_quiz_grade" },
+          { "label": "matrix inversion", "next": "discover_checkin_quiz_grade" },
+          { "label": "integration", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Power Systems": [
+          { "label": "watt", "next": "discover_checkin_quiz_grade" },
+          { "label": "volt", "next": "discover_checkin_quiz_grade" },
+          { "label": "ampere", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Control Systems": [
+          { "label": "PID", "next": "discover_checkin_quiz_grade" },
+          { "label": "PLC", "next": "discover_checkin_quiz_grade" },
+          { "label": "ADC", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Structural Design": [
+          { "label": "compression", "next": "discover_checkin_quiz_grade" },
+          { "label": "tension", "next": "discover_checkin_quiz_grade" },
+          { "label": "torsion", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Construction Management": [
+          { "label": "Gantt chart", "next": "discover_checkin_quiz_grade" },
+          { "label": "org chart", "next": "discover_checkin_quiz_grade" },
+          { "label": "flowchart", "next": "discover_checkin_quiz_grade" }
+        ],
+        "GIS & Surveying": [
+          { "label": "theodolite", "next": "discover_checkin_quiz_grade" },
+          { "label": "barometer", "next": "discover_checkin_quiz_grade" },
+          { "label": "voltmeter", "next": "discover_checkin_quiz_grade" }
+        ],
+        "CAD & Design": [
+          { "label": "3D modeling", "next": "discover_checkin_quiz_grade" },
+          { "label": "video editing", "next": "discover_checkin_quiz_grade" },
+          { "label": "photo retouching", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Robotics": [
+          { "label": "ROS", "next": "discover_checkin_quiz_grade" },
+          { "label": "WordPress", "next": "discover_checkin_quiz_grade" },
+          { "label": "Unity only", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Thermal & Energy": [
+          { "label": "energy conservation", "next": "discover_checkin_quiz_grade" },
+          { "label": "entropy always falling", "next": "discover_checkin_quiz_grade" },
+          { "label": "absolute zero", "next": "discover_checkin_quiz_grade" }
+        ],
+        "Manufacturing & 3D Printing": [
+          { "label": "additive manufacturing", "next": "discover_checkin_quiz_grade" },
+          { "label": "subtractive manufacturing", "next": "discover_checkin_quiz_grade" },
+          { "label": "casting", "next": "discover_checkin_quiz_grade" }
+        ]
+      }
+    },
+    "captureAs": "quiz_answer"
+  },
+  {
+    "id": "discover_checkin_quiz_grade",
+    "say": "Close! Worth a quick revisit -- the answer's sitting in your roadmap resources. No stress, that's exactly what they're for.",
+    "sayByAnswer": {
+      "key": "quiz_answer",
+      "fallback": "Close! Worth a quick revisit -- the answer's sitting in your roadmap resources. No stress, that's exactly what they're for.",
+      "map": {
+        "consistency": "Exactly. Consistency wins -- keep showing up.",
+        "supervised learning": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "phishing": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "MQTT": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "logic gates": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "transformer": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "CSS": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "Docker": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "Dart": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "Solidity": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "histogram": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "Verilog": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "C": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "Fourier transform": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "watt": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "PID": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "compression": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "Gantt chart": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "theodolite": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "3D modeling": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "ROS": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "energy conservation": "Nailed it! Your {answers.domain} brain is clearly switched on.",
+        "additive manufacturing": "Nailed it! Your {answers.domain} brain is clearly switched on."
+      }
+    },
+    "options": [{ "label": "Got it", "next": "discover_checkin_retest" }],
+    "gesture": "thumbsup",
+    "arm": "right"
+  },
+  {
+    "id": "discover_checkin_retest",
+    "say": "Little re-test of what you told me before: your track was {answers.domain}, your goal was \"{answers.goal}\". Still true, or has it shifted?",
+    "options": [
+      { "label": "still the same", "next": "discover_return_wrapup" },
+      { "label": "it's shifted", "next": "discover_domain_repick" }
+    ],
+    "captureAs": "track_check"
+  },
+  {
+    "id": "discover_domain_repick",
+    "say": "Totally fine -- first year is FOR shifting. Pick what's pulling you now:",
+    "options": [
+      { "label": "AI/ML", "next": "discover_repick_wrapup" },
+      { "label": "Cybersecurity", "next": "discover_repick_wrapup" },
+      { "label": "IoT", "next": "discover_repick_wrapup" },
+      { "label": "Web Dev", "next": "discover_repick_wrapup" },
+      { "label": "Cloud/DevOps", "next": "discover_repick_wrapup" },
+      { "label": "Mobile Dev", "next": "discover_repick_wrapup" },
+      { "label": "Blockchain", "next": "discover_repick_wrapup" },
+      { "label": "Data Science", "next": "discover_repick_wrapup" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "Marketing", "next": "discover_repick_wrapup" },
+        { "label": "Finance", "next": "discover_repick_wrapup" },
+        { "label": "HR", "next": "discover_repick_wrapup" },
+        { "label": "Operations", "next": "discover_repick_wrapup" },
+        { "label": "Business Analytics", "next": "discover_repick_wrapup" }
+      ]
+    },
+    "optionsByBranch": {
+      "ECE": [
+        { "label": "VLSI Design", "next": "discover_repick_wrapup" },
+        { "label": "Embedded Systems", "next": "discover_repick_wrapup" },
+        { "label": "IoT", "next": "discover_repick_wrapup" },
+        { "label": "Signal Processing", "next": "discover_repick_wrapup" }
+      ],
+      "EEE": [
+        { "label": "Power Systems", "next": "discover_repick_wrapup" },
+        { "label": "Control Systems", "next": "discover_repick_wrapup" },
+        { "label": "Embedded Systems", "next": "discover_repick_wrapup" },
+        { "label": "IoT", "next": "discover_repick_wrapup" }
+      ],
+      "Civil": [
+        { "label": "Structural Design", "next": "discover_repick_wrapup" },
+        { "label": "Construction Management", "next": "discover_repick_wrapup" },
+        { "label": "GIS & Surveying", "next": "discover_repick_wrapup" }
+      ],
+      "Mechanical": [
+        { "label": "CAD & Design", "next": "discover_repick_wrapup" },
+        { "label": "Robotics", "next": "discover_repick_wrapup" },
+        { "label": "Thermal & Energy", "next": "discover_repick_wrapup" },
+        { "label": "Manufacturing & 3D Printing", "next": "discover_repick_wrapup" }
+      ]
+    },
+    "captureAs": "domain"
+  },
+  {
+    "id": "discover_repick_wrapup",
+    "say": "Done -- switched you to {answers.domain}. Your roadmap picks up the new track the next time you open it. Everything you'd already checked off stays checked.",
+    "terminal": true,
+    "gesture": "thumbsup",
+    "arm": "right"
+  },
+  {
+    "id": "discover_return_wrapup",
+    "say": "Love it. Your roadmap's right where you left it -- keep ticking those steps off, and I'm here whenever you want to go deeper.",
+    "sayByAnswer": {
+      "key": "practice_status",
+      "fallback": "Love it. Your roadmap's right where you left it -- keep ticking those steps off, and I'm here whenever you want to go deeper.",
+      "map": {
+        "going strong": "That's what I like to hear! Keep the streak going -- your roadmap has the next steps lined up whenever you're ready to level up.",
+        "on and off": "Honest answer -- respect. Consistency beats intensity: pick ONE small roadmap step this week and just finish it. I'll ask you about it next time.",
+        "haven't started yet": "No guilt -- we restart tiny. Open your roadmap, pick the single easiest step, and do only that this week. Deal? I'll remember to check."
+      }
+    },
+    "terminal": true,
+    "gesture": "thumbsup",
+    "arm": "right"
+  },
+
+  {
+    "id": "discover_continue",
+    "say": "Welcome back! {roadmapProgress}Your {answers.domain} track is right where you left it -- keep ticking those steps off. I'll pull you in for a proper check-in around your next 14-day mark. Go get after it!",
+    "terminal": true,
+    "gesture": "wave",
+    "arm": "right"
+  }
+]

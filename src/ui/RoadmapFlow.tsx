@@ -18,8 +18,10 @@ import type { RoadmapCategory, RoadmapItemRecord, RoadmapStatus } from '@/data/r
 type ToggleSave = (itemId: string, nextStatus: RoadmapStatus) => void;
 
 /** Per-year checklist sub-steps: the engine emits `step-<year>-*` today;
- * `sprint-<year>-*` items get the same stacked rendering and check-off. */
-const isSubStep = (itemId: string) => itemId.startsWith('step-') || itemId.startsWith('sprint-');
+ * `sprint-<year>-*` and `stretch-<year>-*` (Above-50 lane) items get the same
+ * stacked rendering and check-off. */
+const isSubStep = (itemId: string) =>
+  itemId.startsWith('step-') || itemId.startsWith('sprint-') || itemId.startsWith('stretch-');
 
 interface CardData extends Record<string, unknown> {
   item: RoadmapItemRecord;
@@ -30,20 +32,20 @@ interface CardData extends Record<string, unknown> {
 }
 
 const BADGE: Record<RoadmapCategory, string> = {
-  milestone: '⭐',
-  hackathon: '🏆',
-  internship: '💼',
-  oss: '🌱',
+  milestone: '◆',
+  hackathon: 'H',
+  internship: 'I',
+  oss: 'O',
 };
 
 /** Per-year identity: accent (as "r,g,b" so alpha can vary per use) + badge
  * icon. Year cards, their step stacks, and their edges all pick up the year's
  * color so the journey visibly shifts theme as it moves left to right. */
 const YEAR_THEME: Record<number, { accent: string; icon: string }> = {
-  1: { accent: '56,225,255', icon: '🧭' }, // Explorer — teal
-  2: { accent: '251,191,36', icon: '🔨' }, // Builder — amber
-  3: { accent: '167,139,250', icon: '🎯' }, // Closer — violet
-  4: { accent: '52,211,153', icon: '🚀' }, // Launch — green
+  1: { accent: '56,225,255', icon: '1' }, // Explorer — teal
+  2: { accent: '251,191,36', icon: '2' }, // Builder — amber
+  3: { accent: '167,139,250', icon: '3' }, // Closer — violet
+  4: { accent: '52,211,153', icon: '4' }, // Launch — green
 };
 
 /** Year a milestone/step item belongs to (spine order is 0-indexed year). */

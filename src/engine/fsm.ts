@@ -1,21 +1,23 @@
 import { resolveEntryNode } from './entry-state';
-import { requireNode } from './nodes';
-import { composeMessages } from './voice';
-import type { LlmRouter } from './llm-router';
+import { requireNode } from './content-loader';
 import type { AnimationState, Arm, EngineContext, EngineNode, Gesture, TurnRequest, TurnResponse } from './types';
 
-/** Resolves a fixed node's menu for the student: per-branch override first
+/** Resolves a node's menu for the student: per-answer override first
+ * (optionsByAnswer, keyed by any captured answer, e.g. domain), then per-branch
  * (optionsByBranch, keyed by the login-seeded answers.branch), then per-program
  * (optionsByProgram), else the default options list. */
 function nodeOptions(node: EngineNode, ctx: EngineContext) {
-  if (node.kind !== 'fixed') return undefined;
+  const byAnswer =
+    node.optionsByAnswer && ctx.answers[node.optionsByAnswer.key]
+      ? node.optionsByAnswer.map[ctx.answers[node.optionsByAnswer.key]]
+      : undefined;
   const byBranch = ctx.answers.branch ? node.optionsByBranch?.[ctx.answers.branch] : undefined;
-  return byBranch ?? node.optionsByProgram?.[ctx.program] ?? node.options;
+  return byAnswer ?? byBranch ?? node.optionsByProgram?.[ctx.program] ?? node.options;
 }
 
-/** multiSelect flag for TurnResponse -- only set (true) on multi fixed nodes. */
+/** multiSelect flag for TurnResponse -- only set (true) on multi nodes. */
 function multiFlag(node: EngineNode): true | undefined {
-  return node.kind === 'fixed' && node.multi ? true : undefined;
+  return node.multi ? true : undefined;
 }
 
 /** Point for one banded answer; unanswered = middle of the band (1). */
@@ -31,7 +33,7 @@ export function readinessBand(answers: Record<string, string>): string {
     score(answers.readiness_dsa, { strong: 2, okay: 1, weak: 0 }) +
     score(answers.resume_status, { 'recruiter-ready': 2, drafted: 1, "doesn't exist": 0 }) +
     score(answers.mock_status, { regular: 2, '1–2': 1, none: 0 });
-  return total >= 5 ? 'on track 🚀' : total >= 3 ? 'needs focus 🔧' : "at risk — let's fix that ⚡";
+  return total >= 5 ? 'on track' : total >= 3 ? 'not quite there yet' : "at risk — let's fix that";
 }
 
 /** Y2 building momentum from build_project_count / build_dsa_status answers. */
@@ -39,7 +41,30 @@ export function momentumBand(answers: Record<string, string>): string {
   const total =
     score(answers.project_count, { '0': 0, '1': 1, '2–3': 2, '4+': 2 }) +
     score(answers.dsa_status, { 'not started': 0, sometimes: 1, 'daily-ish': 2 });
-  return total >= 3 ? 'building real momentum' : total >= 2 ? 'warming up' : 'time to ship something small';
+  return total >= 3 ? 'building real momentum' : total >= 2 ? 'warming up' : 'just getting started';
+}
+
+/** Y1 package-goal push line for the roadmap intro -- tone from
+ * answers.package_goal + answers.branch (labels match discover_package's menu
+ * verbatim). Empty string when package_goal is missing, or when a 50+ goal has
+ * no CSE/core branch to tone it for (e.g. BBA). */
+export function packagePush(answers: Record<string, string>): string {
+  if (answers.package_goal === 'Below 50 LPA') {
+    return 'Steady path: consistent skills + real projects gets you there comfortably. ';
+  }
+  if (answers.package_goal === 'Above 50 LPA') {
+    if (answers.branch === 'CSE') {
+      return 'That 50+ goal means top-company bar: DSA daily, standout projects, referrals. ';
+    }
+    if (['ECE', 'EEE', 'Civil', 'Mechanical'].includes(answers.branch)) {
+      return 'That 50+ goal in core means top-lane: GATE top ranks or the best core companies — certifications and GPA carry real weight. ';
+    }
+    if (!answers.branch) {
+      // No engineering branch => BBA/business track.
+      return 'That 50+ goal is the premium lane — top consulting, product and finance roles hire on sharp case-cracking and a standout profile. ';
+    }
+  }
+  return '';
 }
 
 function interpolate(text: string, ctx: EngineContext): string {
@@ -47,7 +72,8 @@ function interpolate(text: string, ctx: EngineContext): string {
     .replace(/\{answers\.(\w+)\}/g, (_, key: string) => ctx.answers[key] ?? '')
     .replace(/\{roadmapProgress\}/g, ctx.roadmapProgress ?? '')
     .replace(/\{readinessBand\}/g, () => readinessBand(ctx.answers))
-    .replace(/\{momentumBand\}/g, () => momentumBand(ctx.answers));
+    .replace(/\{momentumBand\}/g, () => momentumBand(ctx.answers))
+    .replace(/\{packagePush\}/g, () => packagePush(ctx.answers));
 }
 
 interface RenderResult {
@@ -57,39 +83,24 @@ interface RenderResult {
   arm?: Arm;
 }
 
-async function renderNode(node: EngineNode, ctx: EngineContext, router: LlmRouter): Promise<RenderResult> {
-  if (node.kind === 'fixed') {
-    const raw = node.sayByAnswer
-      ? (node.sayByAnswer.map[ctx.answers[node.sayByAnswer.key]] ?? node.sayByAnswer.fallback ?? node.say)
-      : node.say;
-    return { say: interpolate(raw, ctx), animationState: 'talking', gesture: node.gesture, arm: node.arm };
-  }
-  if (node.kind === 'llm') {
-    const result = await router.chat(composeMessages(ctx, node.systemPrompt));
-    return { say: result.text, animationState: 'talking' };
-  }
-  // hybrid -- now gets the persona + profile + history (previously sent none),
-  // so the slot-filling question reacts to what was just said.
-  const missing = node.slots.filter((s) => !ctx.answers[s]);
-  const result = await router.chat(
-    composeMessages(ctx, `${node.phrasingPrompt} Ask specifically about: ${missing.join(', ')}.`)
-  );
-  return { say: result.text, animationState: 'thinking' };
+/** Every node is authored/static now (no LLM): resolve sayByAnswer (or fall back
+ * to the node's plain `say`), interpolate the profile placeholders, done. */
+function renderNode(node: EngineNode, ctx: EngineContext): RenderResult {
+  const raw = node.sayByAnswer
+    ? (node.sayByAnswer.map[ctx.answers[node.sayByAnswer.key]] ?? node.sayByAnswer.fallback ?? node.say)
+    : node.say;
+  return { say: interpolate(raw, ctx), animationState: 'talking', gesture: node.gesture, arm: node.arm };
 }
 
 /**
  * Executes one conversation turn. `req.nodeId === 'start'` begins/resumes a
- * session by resolving the (year, hasHistory) entry node; otherwise `req.nodeId`
- * is the node the student is responding to.
+ * session by resolving the (year, hasHistory, reengagementDue) entry node;
+ * otherwise `req.nodeId` is the node the student is responding to.
  */
-export async function processTurn(
-  ctx: EngineContext,
-  req: TurnRequest,
-  router: LlmRouter
-): Promise<TurnResponse> {
+export function processTurn(ctx: EngineContext, req: TurnRequest): TurnResponse {
   if (req.nodeId === 'start') {
-    const entryNode = requireNode(resolveEntryNode(ctx.year, ctx.hasHistory));
-    const { say, animationState, gesture, arm } = await renderNode(entryNode, ctx, router);
+    const entryNode = requireNode(resolveEntryNode(ctx.year, ctx.hasHistory, ctx.reengagementDue));
+    const { say, animationState, gesture, arm } = renderNode(entryNode, ctx);
     return {
       nodeId: entryNode.id,
       say,
@@ -103,24 +114,13 @@ export async function processTurn(
   }
 
   const current = requireNode(req.nodeId);
-  if (req.input !== undefined) {
-    if (current.kind === 'hybrid') {
-      const targetSlot = current.slots.find((s) => !ctx.answers[s]) ?? current.slots[0];
-      ctx.answers[targetSlot] = req.input;
-    } else if ('captureAs' in current && current.captureAs) {
-      ctx.answers[current.captureAs] = req.input;
-    }
-    // History fetched pre-turn ends at the PRIOR bot question -- the student's
-    // reply we're holding in req.input isn't in it yet. Append it so the next
-    // node's LLM generation actually reacts to what was just said instead of
-    // continuing blind after its own question (which makes llama return empty
-    // or emoji-only turns). This is what makes the bot feel like it's listening.
-    ctx.history = [...ctx.history, { role: 'user', content: req.input }];
+  if (req.input !== undefined && current.captureAs) {
+    ctx.answers[current.captureAs] = req.input;
   }
 
   let nextId: string;
   const currentOptions = nodeOptions(current, ctx);
-  if (current.kind === 'fixed' && current.multi && current.next) {
+  if (current.multi && current.next) {
     // Multi-select input is a comma-joined label string ("Git, SQL") -- it will
     // never equal one option label, so skip matching; captureAs above already
     // stored it whole, and the node advances on its single `next`.
@@ -128,14 +128,14 @@ export async function processTurn(
   } else if (currentOptions) {
     const match = currentOptions.find((o) => o.label === req.input);
     nextId = (match ?? currentOptions[0]).next;
-  } else if ('next' in current && current.next) {
+  } else if (current.next) {
     nextId = current.next;
   } else {
     throw new Error(`Node ${current.id} has no outgoing edge`);
   }
 
   const nextNode = requireNode(nextId);
-  const { say, animationState, gesture, arm } = await renderNode(nextNode, ctx, router);
+  const { say, animationState, gesture, arm } = renderNode(nextNode, ctx);
 
   return {
     nodeId: nextNode.id,

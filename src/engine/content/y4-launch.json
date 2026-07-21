@@ -1,0 +1,225 @@
+[
+  {
+    "id": "launch_intro",
+    "say": "Pathfinder here -- final year, launch mode. First time we're talking and time is tight, so let's cut straight to what gets you across the line.",
+    "sayByAnswer": {
+      "key": "branch",
+      "fallback": "Pathfinder here -- final year, launch mode. First time we're talking and time is tight, so let's cut straight to what gets you across the line.",
+      "map": {
+        "CSE": "Pathfinder here -- final year CSE, launch mode. Placements are live and time is tight. Let's aim your prep where it wins offers, fast.",
+        "ECE": "Pathfinder here -- final year ECE. Placements, GATE results, core offers -- lots in the air. Let's focus your final push where it counts.",
+        "EEE": "Pathfinder here -- final year EEE. PSU lists, core drives, software offers. Let's cut to what gets you placed fastest.",
+        "Civil": "Pathfinder here -- final year Civil. Core drives, GATE/IES, site offers. Let's focus your last stretch where it converts.",
+        "Mechanical": "Pathfinder here -- final year Mechanical. Core drives, GATE, design roles. Let's aim your final prep where it lands the offer."
+      }
+    },
+    "options": [{ "label": "Let's go", "next": "launch_goal" }],
+    "gesture": "wave",
+    "arm": "right"
+  },
+  {
+    "id": "launch_goal",
+    "say": "Fast one -- what's the target you want to walk out of this year with? A role, a company, an offer number... say it plain.",
+    "captureAs": "goal",
+    "next": "launch_offer_check"
+  },
+  {
+    "id": "launch_offer_check",
+    "say": "Placement crunch time -- where do you stand on offers, or what interview prep do you need most right now?",
+    "captureAs": "offer_status",
+    "next": "launch_days_left"
+  },
+  {
+    "id": "launch_days_left",
+    "say": "First things first -- how close is your next big interview or test?",
+    "options": [
+      { "label": "<2wk", "next": "launch_weakest_round" },
+      { "label": "2–4wk", "next": "launch_weakest_round" },
+      { "label": "1–3mo", "next": "launch_weakest_round" },
+      { "label": "not scheduled", "next": "launch_weakest_round" }
+    ],
+    "captureAs": "days_left"
+  },
+  {
+    "id": "launch_weakest_round",
+    "say": "Which round worries you the most right now? No judgment -- that's where we aim the prep.",
+    "options": [
+      { "label": "aptitude", "next": "launch_offer_band" },
+      { "label": "DSA", "next": "launch_offer_band" },
+      { "label": "system design", "next": "launch_offer_band" },
+      { "label": "HR-case", "next": "launch_offer_band" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "aptitude", "next": "launch_offer_band" },
+        { "label": "group discussion", "next": "launch_offer_band" },
+        { "label": "case interview", "next": "launch_offer_band" },
+        { "label": "HR/PI", "next": "launch_offer_band" }
+      ]
+    },
+    "captureAs": "weakest_round"
+  },
+  {
+    "id": "launch_offer_band",
+    "say": "And the scoreboard -- how many offers are in hand right now?",
+    "options": [
+      { "label": "0", "next": "launch_backup_plan" },
+      { "label": "1", "next": "launch_backup_plan" },
+      { "label": "2+", "next": "launch_backup_plan" }
+    ],
+    "captureAs": "offer_count"
+  },
+  {
+    "id": "launch_backup_plan",
+    "say": "Smart players keep a plan B warm. What's yours if placements run long?",
+    "sayByAnswer": {
+      "key": "offer_count",
+      "fallback": "Smart players keep a plan B warm. What's yours if placements run long?",
+      "map": {
+        "0": "Okay -- sprint mode. We close the gap fast, but smart sprinters keep a plan B warm. What's yours?",
+        "1": "One offer banked -- breathe, you're safe. Now we aim higher; what's your plan B while we do?",
+        "2+": "2+ offers? You're negotiating now, not applying -- we'll talk leverage. Still, what's your fallback lane?"
+      }
+    },
+    "options": [
+      { "label": "off-campus applications", "next": "launch_mock_status" },
+      { "label": "upskill & reapply", "next": "launch_mock_status" },
+      { "label": "none yet", "next": "launch_mock_status" }
+    ],
+    "captureAs": "backup_plan"
+  },
+  {
+    "id": "launch_mock_status",
+    "say": "Mock interviews -- how many have you actually sat through?",
+    "options": [
+      { "label": "none", "next": "launch_target_type" },
+      { "label": "1–2", "next": "launch_target_type" },
+      { "label": "regular", "next": "launch_target_type" }
+    ],
+    "captureAs": "mock_status"
+  },
+  {
+    "id": "launch_target_type",
+    "say": "What kind of place are you aiming at? It changes how we prep the last mile.",
+    "options": [
+      { "label": "product cos", "next": "launch_time_budget" },
+      { "label": "startups", "next": "launch_time_budget" },
+      { "label": "core", "next": "launch_time_budget" },
+      { "label": "consulting", "next": "launch_time_budget" },
+      { "label": "govt-PSU", "next": "launch_time_budget" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "consulting", "next": "launch_time_budget" },
+        { "label": "product/marketing", "next": "launch_time_budget" },
+        { "label": "finance/banking", "next": "launch_time_budget" },
+        { "label": "analytics", "next": "launch_time_budget" },
+        { "label": "govt", "next": "launch_time_budget" }
+      ]
+    },
+    "captureAs": "target_type"
+  },
+  {
+    "id": "launch_time_budget",
+    "say": "How many hours a week can you throw at prep from here to the finish?",
+    "options": [
+      { "label": "<3 hrs/week", "next": "launch_higher_studies" },
+      { "label": "3–7 hrs/week", "next": "launch_higher_studies" },
+      { "label": "8+ hrs/week", "next": "launch_higher_studies" }
+    ],
+    "captureAs": "time_budget"
+  },
+  {
+    "id": "launch_higher_studies",
+    "say": "Last one, since time's tight -- where does higher studies sit for you right now?",
+    "options": [
+      { "label": "placements only", "next": "launch_wrapup" },
+      { "label": "weighing both", "next": "launch_wrapup" },
+      { "label": "higher studies focus", "next": "launch_wrapup" }
+    ],
+    "captureAs": "higher_studies_interest"
+  },
+  {
+    "id": "launch_wrapup",
+    "say": "You've come a long way since {answers.goal}. Here's your final-stretch roadmap -- let's get you across the line.",
+    "terminal": true,
+    "gesture": "thumbsup",
+    "arm": "right"
+  },
+
+  {
+    "id": "launch_followup_intro",
+    "say": "Final stretch. Looking back at everything -- {answers.goal}. {roadmapProgress}How's the placement season treating you?",
+    "sayByAnswer": {
+      "key": "branch",
+      "fallback": "Final stretch. Looking back at everything -- {answers.goal}. {roadmapProgress}How's the placement season treating you?",
+      "map": {
+        "CSE": "Final stretch. Looking back at everything -- {answers.goal}. {roadmapProgress}How's the placement season treating you?",
+        "ECE": "Final stretch. Looking back at everything -- {answers.goal}. {roadmapProgress}Placements, GATE results, core offers -- how's the season treating you?",
+        "EEE": "Final stretch. Looking back at everything -- {answers.goal}. {roadmapProgress}PSU lists, core drives, software offers -- how's the season treating you?",
+        "Civil": "Final stretch. Looking back at everything -- {answers.goal}. {roadmapProgress}Core drives, GATE/IES, site offers -- how's the season treating you?",
+        "Mechanical": "Final stretch. Looking back at everything -- {answers.goal}. {roadmapProgress}Core drives, GATE, design roles -- how's the season treating you?"
+      }
+    },
+    "captureAs": "offer_status",
+    "next": "launch_followup_offers",
+    "gesture": "wave",
+    "arm": "right"
+  },
+  {
+    "id": "launch_followup_offers",
+    "say": "The scoreboard -- how many offers are in hand right now?",
+    "options": [
+      { "label": "0", "next": "launch_followup_weakest" },
+      { "label": "1", "next": "launch_followup_weakest" },
+      { "label": "2+", "next": "launch_followup_weakest" }
+    ],
+    "captureAs": "offer_count"
+  },
+  {
+    "id": "launch_followup_weakest",
+    "say": "Which round is still worrying you the most right now?",
+    "options": [
+      { "label": "aptitude", "next": "launch_followup_mock" },
+      { "label": "DSA", "next": "launch_followup_mock" },
+      { "label": "system design", "next": "launch_followup_mock" },
+      { "label": "HR-case", "next": "launch_followup_mock" }
+    ],
+    "optionsByProgram": {
+      "BBA": [
+        { "label": "aptitude", "next": "launch_followup_mock" },
+        { "label": "group discussion", "next": "launch_followup_mock" },
+        { "label": "case interview", "next": "launch_followup_mock" },
+        { "label": "HR/PI", "next": "launch_followup_mock" }
+      ]
+    },
+    "captureAs": "weakest_round"
+  },
+  {
+    "id": "launch_followup_mock",
+    "say": "Mock interviews since we last spoke -- how many have you sat through?",
+    "options": [
+      { "label": "none", "next": "launch_followup_retest" },
+      { "label": "1–2", "next": "launch_followup_retest" },
+      { "label": "regular", "next": "launch_followup_retest" }
+    ],
+    "captureAs": "mock_status"
+  },
+  {
+    "id": "launch_followup_retest",
+    "say": "Re-test: your target was \"{answers.goal}\". Still the same, or has it shifted?",
+    "options": [
+      { "label": "still the same", "next": "launch_wrapup" },
+      { "label": "it's shifted", "next": "launch_wrapup" }
+    ],
+    "captureAs": "track_check"
+  },
+
+  {
+    "id": "launch_continue",
+    "say": "Welcome back! {roadmapProgress}Your final-stretch roadmap's right where you left it -- keep drilling your weak rounds and mocks. I'll run a full check-in at your next 14-day mark.",
+    "terminal": true,
+    "gesture": "wave",
+    "arm": "right"
+  }
+]

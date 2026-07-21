@@ -31,11 +31,21 @@ export async function GET(request: NextRequest) {
     cursor.setUTCDate(cursor.getUTCDate() - 1);
   }
 
+  // Degree-life checklist progress for the chat HUD pill: step-* (and the
+  // sprint-*/stretch-* lanes that render alongside them) done vs total.
+  const roadmapItems = await repo.getRoadmapItems(studentId);
+  const stepItems = roadmapItems.filter(
+    (i) => i.itemId.startsWith('step-') || i.itemId.startsWith('sprint-') || i.itemId.startsWith('stretch-')
+  );
+  const stepsDone = stepItems.filter((i) => i.status === 'done').length;
+
   return NextResponse.json({
     onboardingComplete,
     reengagementDue,
     year: student.year,
     hasHistory: conversationLog.length > 0,
     streakDays,
+    stepsDone,
+    stepsTotal: stepItems.length,
   });
 }
